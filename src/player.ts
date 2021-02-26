@@ -1,67 +1,50 @@
+import { BufferManager, BufferEvent } from "./bufferManager";
+import setting from "./setting";
+
+
 class MultiVisionPlayer {
-  private mimeCodec: string;
-  private HTMLElement: HTMLMediaElement;
-  private mediaSource?: MediaSource;
-  private sourceBuffer?: SourceBuffer;
-  private currentFrameIndex: number;
-  private currentCamIndex: number;
+    private HTMLElement: HTMLMediaElement;
+    private mediaSource?: MediaSource;
+    private bufferManager?: BufferManager;
 
-  constructor(mimeCodec: string, htmlElement: HTMLMediaElement) {
-    this.mimeCodec = mimeCodec;
-    this.HTMLElement = htmlElement;
-    this.mediaSource = undefined;
-    this.sourceBuffer = undefined;
+    constructor() {
+        console.debug('Initialize MultiVisionPlayer')
+        this.HTMLElement = <HTMLMediaElement>document.getElementById(setting.playerHTMLElementID)!;
+        this.mediaSource = undefined;
+        this.bufferManager = undefined;
 
-    this.currentFrameIndex = 0;
-    this.currentCamIndex = 1;
-
-    this.initializeMediaSource()
-      .then(() => this.initializeSourceBuffer())
-      .then(() => this.onSourceUpdateEnd());
-  }
-
-  private static log(text: string) {
-    console.debug('[MVP] ' + text);
-  }
-
-  private initializeMediaSource(): Promise<Event> {
-    MultiVisionPlayer.log('Initialize Media Source')
-    return new Promise<Event>(resolve => {
-      this.mediaSource = new MediaSource();
-      this.HTMLElement.src = URL.createObjectURL(this.mediaSource);
-      this.mediaSource.addEventListener('sourceopen', resolve);
-    });
-  }
-
-  private initializeSourceBuffer(): Promise<Event> {
-    MultiVisionPlayer.log('Initialize Source Buffer')
-    return new Promise<Event>(resolve => {
-      this.sourceBuffer = this.mediaSource!.addSourceBuffer(this.mimeCodec);
-      // on buffer update
-      this.sourceBuffer.addEventListener('updateend', resolve);
-    });
-  }
-
-  private onSourceUpdateEnd() {
-    MultiVisionPlayer.log('Update end');
-  }
-
-  private fetchSegment = () => {
-    let segmentUrl: string;
-    if (this.currentFrameIndex === 0) {
-      segmentUrl = `${this.currentCamIndex}/index.mp4`;
-    }else {
-      segmentUrl = `${this.currentCamIndex}/${this.currentFrameIndex}.m4s`;
+        this.initializeMediaSource()
+            .then(() => {
+                const sourceBuffer = this.mediaSource!.addSourceBuffer(
+                    setting.mimeCodec
+                );
+                this.bufferManager = new BufferManager(
+                    sourceBuffer,
+                    this.HTMLElement
+                )
+                this.bufferManager.on(
+                    BufferEvent.COMPLETE,
+                    () => {
+                        if (this.mediaSource!.readyState === 'open') {
+                            console.debug('Complete fetch!')
+                            this.mediaSource!.endOfStream();
+                        }
+                    }
+                )
+            })
     }
 
-    fetch(segmentUrl).then(
-      resp => resp.arrayBuffer()
-    ).then(buffer => {
-      this.currentFrameIndex += 1
-      this.sourceBuffer!.appendBuffer(buffer);
-    })
-  }
+    private initializeMediaSource(): Promise<Event> {
+        return new Promise<Event>(resolve => {
+            this.mediaSource = new MediaSource();
+            this.HTMLElement.src = URL.createObjectURL(this.mediaSource);
+            this.mediaSource.addEventListener('sourceopen', resolve);
+        });
+    }
 
+    changeCamera(step: number) {
+        this.bufferManager!.changeCamera(step);
+    }
 }
 
 export default MultiVisionPlayer;
