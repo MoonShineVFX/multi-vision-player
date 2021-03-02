@@ -6,5 +6,5 @@ import Controller from "./controller";
 
 const player = new MultiVisionPlayer();
 new Controller(
-    step => player.changeCamera(step)
+    step => player.requestChangeCamera(step)
 );

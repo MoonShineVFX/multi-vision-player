@@ -207,7 +207,7 @@ class BufferManager {
         // Freeze Meta
         if (this.freezeMeta === undefined) {
             const currentTime = this.HTMLElement.currentTime;
-            const playSegmentIndex = Math.floor(currentTime * setting.segmentPerSecond) - 1;
+            const playSegmentIndex = Math.max(Math.floor(currentTime * setting.segmentPerSecond) - 1, 0);
             const cameraBufferCache = this.cameraBufferCache[currentCameraIndex];
             const loopCount = cameraBufferCache.length - playSegmentIndex;
             this.freezeMeta = {

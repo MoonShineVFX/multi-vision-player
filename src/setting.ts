@@ -6,6 +6,7 @@ interface GlobalSetting {
     cameraCount: number;
     segmentPerSecond: number;
     freezeTimeDelay: number;
+    minimumCameraChangeInterval: number;
 }
 
 const setting: GlobalSetting = {
@@ -14,8 +15,9 @@ const setting: GlobalSetting = {
     controllerHTMLElementID: 'the-controller',
     bufferPreCacheLength: 5,
     cameraCount: 24,
-    segmentPerSecond: 10,
-    freezeTimeDelay: 0.07
+    segmentPerSecond: 1,
+    freezeTimeDelay: 0.07,
+    minimumCameraChangeInterval: 0.03
 }
 
 export default setting;
