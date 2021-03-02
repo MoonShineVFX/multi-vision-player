@@ -29,7 +29,6 @@ class BufferManager {
     private sourceBuffer: SourceBuffer;
     private HTMLElement: HTMLMediaElement;
     private cameraBufferCache: {[key: string]: ArrayBuffer[]};
-    private currentSegmentIndex: number;
     private currentCameraIndex: number;
     private segmentFetcher: SegmentFetcher;
     private taskQueue: BufferTask[];
@@ -44,7 +43,6 @@ class BufferManager {
         this.sourceBuffer = sourceBuffer;
         this.HTMLElement = HTMLElement;
         this.cameraBufferCache = {};
-        this.currentSegmentIndex = 0;
         this.currentCameraIndex = 1;
         this.taskQueue = [];
         this.isBusy = false;
@@ -163,7 +161,7 @@ class BufferManager {
 
     checkFetchingNecessary() {
         // Test file finish and callback once
-        if (this.currentSegmentIndex >= 121) {
+        if (this.segmentFetcher.currentIndex >= 121) {
             if (this.sourceBuffer.updating) return;
             this.eventCallbacks[BufferEvent.COMPLETE].forEach(callbackFunc => {
                 callbackFunc();
@@ -177,9 +175,8 @@ class BufferManager {
         // Fetch if not enough buffered
         if (this.getBufferEndTime() - this.HTMLElement.currentTime < setting.bufferPreCacheLength) {
             this.segmentFetcher.fetch(
-                this.currentCameraIndex, this.currentSegmentIndex
+                this.currentCameraIndex
             ).then(segmentFetchResult => {
-                this.currentSegmentIndex += 1;
                 this.addTask(
                     BufferTaskType.APPEND,
                     segmentFetchResult

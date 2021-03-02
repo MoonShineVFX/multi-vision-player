@@ -8,25 +8,27 @@ type FetchCallback = (cameraIndex:string, segmentIndex:number, arrayBuffer: Arra
 
 // Main
 class SegmentFetcher {
+    private fetchCallback: FetchCallback;
+    private cameraIndexList: string[];
+    currentIndex: number;
     isFetching: boolean;
-    fetchCallback: FetchCallback;
-    cameraIndexList: string[];
 
     constructor(cameraIndexList: string[], fetchCallback: FetchCallback) {
         this.cameraIndexList = cameraIndexList;
         this.fetchCallback = fetchCallback;
         this.isFetching = false;
+        this.currentIndex = 0;
     }
 
-    fetch(currentCameraIndex: number, segmentIndex: number): Promise<SegmentFetchMeta> {
+    fetch(currentCameraIndex: number): Promise<SegmentFetchMeta> {
         this.isFetching = true;
 
         // Define segment filename
         let segmentName: string;
-        if (segmentIndex === 0) {
+        if (this.currentIndex === 0) {
             segmentName = '/init.mp4';
         }else {
-            segmentName = `/${segmentIndex}.m4s`;
+            segmentName = `/${this.currentIndex}.m4s`;
         }
 
         // Batch fetch for multiple cameras
@@ -35,7 +37,7 @@ class SegmentFetcher {
             const fetchPromise = fetch(`${cameraIndex}/${segmentName}`).then(
                 resp => resp.arrayBuffer()
             ).then(arrayBuffer => {
-                this.fetchCallback(cameraIndex, segmentIndex, arrayBuffer);
+                this.fetchCallback(cameraIndex, this.currentIndex, arrayBuffer);
             })
             fetchPromises.push(fetchPromise);
         })
@@ -44,6 +46,8 @@ class SegmentFetcher {
         return Promise.all(fetchPromises)
             .then(() => {
                 this.isFetching = false;
+                const segmentIndex = this.currentIndex;
+                this.currentIndex += 1;
                 return {
                     cameraIndex: currentCameraIndex,
                     segmentIndex: segmentIndex
