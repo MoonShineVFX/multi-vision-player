@@ -4,6 +4,7 @@ interface GlobalSetting {
     bufferPreCacheLength: number;
     cameraCount: number;
     segmentPerSecond: number;
+    freezeTimeDelay: number;
 }
 
 const setting: GlobalSetting = {
@@ -11,7 +12,8 @@ const setting: GlobalSetting = {
     playerHTMLElementID: 'the-player',
     bufferPreCacheLength: 5,
     cameraCount: 24,
-    segmentPerSecond: 10
+    segmentPerSecond: 10,
+    freezeTimeDelay: 0.1
 }
 
 export default setting;

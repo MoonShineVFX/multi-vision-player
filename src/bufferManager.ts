@@ -5,7 +5,8 @@ import setting from "./setting";
 // Define
 enum BufferTaskType {
     APPEND,
-    REMOVE
+    REMOVE,
+    CHANGE
 }
 
 interface BufferTask {
@@ -15,6 +16,11 @@ interface BufferTask {
 
 const BufferEvent: {[key: string]: string} = {
     COMPLETE: 'complete'
+}
+
+interface FreezeMeta {
+    time: number;
+    loopSegmentIndices: number[];
 }
 
 
@@ -29,6 +35,9 @@ class BufferManager {
     private taskQueue: BufferTask[];
     private isBusy: boolean;
     private eventCallbacks: {[bufferEvent: string]: (() => void)[]};
+    private timeSeekBack: boolean;
+    private freezeMeta?: FreezeMeta;
+    private releaseFreezeMetaTimer?: ReturnType<typeof setTimeout>;
 
     constructor(sourceBuffer: SourceBuffer, HTMLElement: HTMLMediaElement) {
         console.debug('Initialize BufferManager')
@@ -40,6 +49,9 @@ class BufferManager {
         this.taskQueue = [];
         this.isBusy = false;
         this.eventCallbacks = {};
+        this.timeSeekBack = false;
+        this.freezeMeta = undefined;
+        this.releaseFreezeMetaTimer = undefined;
 
         // Fill cameraBufferCache with camera count
         [...Array(setting.cameraCount)].forEach((_, cameraIndex) => {
@@ -81,6 +93,10 @@ class BufferManager {
             return;
         }
         if (!this.isBusy) this.isBusy = true;
+        if (this.timeSeekBack) {
+            this.HTMLElement.currentTime = this.freezeMeta!.time;
+            this.timeSeekBack = false;
+        }
 
         // Deal with task
         let task = this.taskQueue.shift()!;
@@ -98,9 +114,22 @@ class BufferManager {
                     }
                     this.sourceBuffer.appendBuffer(buffer);
                 }else{
-                    console.debug('Skip invalid append');
                     this.update();
                 }
+                return;
+            // Change camera
+            case BufferTaskType.CHANGE:
+                const fetchMeta = task.payload!;
+                if (fetchMeta.segmentIndex === -1) {
+                    console.error('Index is -1');
+                    console.error(fetchMeta);
+                    return;
+                }
+                const buffer = this.cameraBufferCache
+                    [fetchMeta.cameraIndex]
+                    [fetchMeta.segmentIndex];
+                this.timeSeekBack = true;
+                this.sourceBuffer.appendBuffer(buffer);
                 return;
             // Remove
             case BufferTaskType.REMOVE:
@@ -133,12 +162,12 @@ class BufferManager {
     }
 
     checkFetchingNecessary() {
-        // Test file finish
+        // Test file finish and callback once
         if (this.currentSegmentIndex >= 121) {
+            if (this.sourceBuffer.updating) return;
             this.eventCallbacks[BufferEvent.COMPLETE].forEach(callbackFunc => {
                 callbackFunc();
             })
-            this.currentSegmentIndex += 1;
             return;
         }
 
@@ -159,8 +188,13 @@ class BufferManager {
         }
     }
 
+    clearFreezeMeta() {
+        this.freezeMeta = undefined;
+        this.releaseFreezeMetaTimer = undefined;
+    }
+
     changeCamera(step: number) {
-        // bound camera index
+        // Bound camera index
         const tempCameraIndex = this.currentCameraIndex + step;
         if (tempCameraIndex > setting.cameraCount) {
             return;
@@ -169,25 +203,41 @@ class BufferManager {
             return;
         }
 
-        // Clear buffer
-        this.taskQueue = [];
-        this.addTask(BufferTaskType.REMOVE)
-
-        // Add new camera buffer
+        // Change camera index
         const currentCameraIndex = this.currentCameraIndex + step;
         this.currentCameraIndex = currentCameraIndex;
 
-        const playSegmentIndex = Math.floor(this.HTMLElement.currentTime * setting.segmentPerSecond) - 1;
-        const cameraBufferCache = this.cameraBufferCache[currentCameraIndex];
-        const loopCount = cameraBufferCache.length - playSegmentIndex;
+        // Freeze Meta
+        if (this.freezeMeta === undefined) {
+            const currentTime = this.HTMLElement.currentTime;
+            const playSegmentIndex = Math.floor(currentTime * setting.segmentPerSecond) - 1;
+            const cameraBufferCache = this.cameraBufferCache[currentCameraIndex];
+            const loopCount = cameraBufferCache.length - playSegmentIndex;
+            this.freezeMeta = {
+                time: currentTime,
+                loopSegmentIndices: [...Array(loopCount).keys()].map(i => i + playSegmentIndex)
+            }
+        }
+        if (this.releaseFreezeMetaTimer !== undefined) {
+            clearTimeout(this.releaseFreezeMetaTimer!);
+        }
+        this.releaseFreezeMetaTimer = setTimeout(
+            () => this.clearFreezeMeta(),
+            setting.freezeTimeDelay * 1000
+        );
 
-        [...Array(loopCount)].forEach((_, index) => {
-            const segmentIndex = index + playSegmentIndex;
+        this.freezeMeta.loopSegmentIndices.forEach((thisSegmentIndex, index) => {
+            let taskType: BufferTaskType;
+            if (index === 0) {
+                taskType = BufferTaskType.CHANGE
+            } else {
+                taskType = BufferTaskType.APPEND
+            }
             this.addTask(
-                BufferTaskType.APPEND,
+                taskType,
                 {
                     cameraIndex: currentCameraIndex,
-                    segmentIndex: segmentIndex
+                    segmentIndex: thisSegmentIndex
                 }
             )
         });
