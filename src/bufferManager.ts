@@ -37,6 +37,7 @@ class BufferManager {
     private timeSeekBack: boolean;
     private freezeMeta?: FreezeMeta;
     private releaseFreezeMetaTimer?: ReturnType<typeof setTimeout>;
+    private isPlayerPaused: boolean;
 
     constructor(sourceBuffer: SourceBuffer, HTMLElement: HTMLMediaElement) {
         console.debug('Initialize BufferManager')
@@ -50,6 +51,7 @@ class BufferManager {
         this.timeSeekBack = false;
         this.freezeMeta = undefined;
         this.releaseFreezeMetaTimer = undefined;
+        this.isPlayerPaused = false;
 
         // Fill cameraBufferCache with camera count
         [...Array(setting.cameraCount)].forEach((_, cameraIndex) => {
@@ -188,6 +190,7 @@ class BufferManager {
     clearFreezeMeta() {
         this.freezeMeta = undefined;
         this.releaseFreezeMetaTimer = undefined;
+        if (!this.isPlayerPaused) this.HTMLElement.play();
     }
 
     changeCamera(step: number) {
@@ -204,8 +207,13 @@ class BufferManager {
         const currentCameraIndex = this.currentCameraIndex + step;
         this.currentCameraIndex = currentCameraIndex;
 
-        // Freeze Meta
+        // Freeze Meta | Start change camera
         if (this.freezeMeta === undefined) {
+            // Mark player paused state
+            this.isPlayerPaused = this.HTMLElement.paused;
+            if (!this.isPlayerPaused) this.HTMLElement.pause();
+
+            // Set freeze meta
             const currentTime = this.HTMLElement.currentTime;
             const playSegmentIndex = Math.max(Math.floor(currentTime * setting.segmentPerSecond) - 1, 0);
             const cameraBufferCache = this.cameraBufferCache[currentCameraIndex];
