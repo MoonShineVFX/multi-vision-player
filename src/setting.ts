@@ -8,6 +8,7 @@ interface GlobalSetting {
     segmentPerSecond: number;
     freezeTimeDelay: number;
     minimumCameraChangeInterval: number;
+    endFrame: number;
 }
 
 const setting: GlobalSetting = {
@@ -19,7 +20,8 @@ const setting: GlobalSetting = {
     cameraCount: 24,
     segmentPerSecond: 10,
     freezeTimeDelay: 0.07,
-    minimumCameraChangeInterval: 0.03
+    minimumCameraChangeInterval: 0.03,
+    endFrame: 121
 }
 
 export default setting;

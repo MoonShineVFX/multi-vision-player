@@ -10,7 +10,7 @@ class MultiVisionPlayer {
     private isCameraChanging: boolean;
 
     constructor() {
-        console.debug('Initialize MultiVisionPlayer')
+        console.info('Initialize MultiVisionPlayer')
         this.HTMLElement = <HTMLMediaElement>document.getElementById(setting.playerHTMLElementID)!;
         this.mediaSource = undefined;
         this.bufferManager = undefined;
@@ -34,7 +34,7 @@ class MultiVisionPlayer {
                     BufferEvent.COMPLETE,
                     () => {
                         if (this.mediaSource!.readyState === 'open') {
-                            console.debug('Complete play!')
+                            console.info('Complete play!')
                             this.mediaSource!.endOfStream();
                         }
                     }
@@ -59,9 +59,10 @@ class MultiVisionPlayer {
     }
 
     updateChangeCamera() {
-        console.log('change camera');
+        console.debug('Update change camera');
         if (this.changeCameraStepsQueue.length === 0) {
             this.isCameraChanging = false;
+            console.debug('Finish change camera')
             return;
         }
         this.bufferManager!.changeCamera(

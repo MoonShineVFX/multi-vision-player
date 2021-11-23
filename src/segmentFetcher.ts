@@ -20,6 +20,7 @@ class SegmentFetcher {
     isFetching: boolean;
 
     constructor(cameraIndexList: string[], fetchCallback: FetchCallback) {
+        console.info('Initialize SegmentFetcher')
         this.cameraIndexList = cameraIndexList;
         this.fetchCallback = fetchCallback;
         this.isFetching = false;
@@ -27,23 +28,20 @@ class SegmentFetcher {
     }
 
     async fetchSegment(currentCameraIndex: number): Promise<SegmentFetchMeta> {
-        console.debug(`Fetch with camera ${currentCameraIndex}`)
         this.isFetching = true;
 
         // Define segment filename
-        console.debug(`Define segment`)
         let segmentName: string;
         if (this.currentIndex === 0) {
             segmentName = '/init.m4s';
         }else {
             segmentName = `/${pad(this.currentIndex, 4)}.m4s`;
         }
-        console.debug(`Fetch file ${segmentName}`)
+        console.debug(`Fetch segment : camera ${currentCameraIndex} / ${segmentName}`)
 
         // Batch fetch for multiple cameras
         let fetchPromises: [Promise<void>?] = [];
         for (const cameraIndex of this.cameraIndexList) {
-            console.debug(`Fetch for camera ${cameraIndex}`)
             let requestURL = `${pad(cameraIndex, 2)}${segmentName}`;
             if (cameraIndex === 'audio') {
                 requestURL = requestURL.replace('m4s', 'webm');

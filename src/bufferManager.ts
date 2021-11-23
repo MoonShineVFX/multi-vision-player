@@ -34,14 +34,16 @@ class BufferManager {
     private segmentFetcher: SegmentFetcher;
     private taskQueue: BufferTask[];
     private isBusy: boolean;
+    private isCompleted: boolean;
     private eventCallbacks: {[bufferEvent: string]: (() => void)[]};
     private timeSeekBack: boolean;
     private freezeMeta?: FreezeMeta;
     private releaseFreezeMetaTimer?: ReturnType<typeof setTimeout>;
     private isPlayerPaused: boolean;
+    private updateCallback: () => void
 
     constructor(videoBuffer: SourceBuffer, audioBuffer: SourceBuffer, HTMLElement: HTMLMediaElement) {
-        console.debug('Initialize BufferManager')
+        console.info('Initialize BufferManager')
         this.videoBuffer = videoBuffer;
         this.audioBuffer = audioBuffer;
         this.HTMLElement = HTMLElement;
@@ -49,11 +51,13 @@ class BufferManager {
         this.currentCameraIndex = 1;
         this.taskQueue = [];
         this.isBusy = false;
+        this.isCompleted = false;
         this.eventCallbacks = {};
         this.timeSeekBack = false;
         this.freezeMeta = undefined;
         this.releaseFreezeMetaTimer = undefined;
         this.isPlayerPaused = false;
+        this.updateCallback = () => this.checkFetchingNecessary();
 
         // Fill cameraBufferCache with camera count
         [...Array(setting.cameraCount)].forEach((_, cameraIndex) => {
@@ -73,7 +77,7 @@ class BufferManager {
         );
         this.HTMLElement.addEventListener(
             'timeupdate',
-            () => this.checkFetchingNecessary()
+            this.updateCallback
         )
 
         // Segment Fetcher
@@ -94,7 +98,8 @@ class BufferManager {
         if (this.taskQueue.length === 0) {
             console.debug('Standby')
             this.isBusy = false;
-            this.checkFetchingNecessary()
+
+            if (!this.isCompleted) this.checkFetchingNecessary();
             return;
         }
 
@@ -106,6 +111,11 @@ class BufferManager {
 
         // Deal with task
         let task = this.taskQueue.shift()!;
+        if (task == undefined) {
+            console.debug('Task queue is empty.')
+            return;
+        }
+
         switch (task.type) {
             // Append
             case BufferTaskType.APPEND:
@@ -174,15 +184,20 @@ class BufferManager {
         if (!this.isBusy) this.update();
     }
 
-    checkFetchingNecessary() {
+    private checkFetchingNecessary() {
         console.debug('Check fetching necessary')
         // Test file finish and callback once
-        if (this.segmentFetcher.currentIndex >= 121) {
+        if (this.segmentFetcher.currentIndex >= setting.endFrame && !this.isCompleted) {
             if (this.videoBuffer.updating) return;
             this.eventCallbacks[BufferEvent.COMPLETE].forEach(callbackFunc => {
                 callbackFunc();
             })
             console.debug('Complete test, not fetch.');
+            this.HTMLElement.removeEventListener(
+                'timeupdate',
+                this.updateCallback
+            )
+            this.isCompleted = true;
             return;
         }
 
@@ -208,7 +223,7 @@ class BufferManager {
         console.debug('End of checking');
     }
 
-    clearFreezeMeta() {
+    private clearFreezeMeta() {
         this.freezeMeta = undefined;
         this.releaseFreezeMetaTimer = undefined;
         if (!this.isPlayerPaused) this.HTMLElement.play();
@@ -227,6 +242,7 @@ class BufferManager {
         // Change camera index
         const currentCameraIndex = this.currentCameraIndex + step;
         this.currentCameraIndex = currentCameraIndex;
+        console.log(`Change camera to ${this.currentCameraIndex}`)
 
         // Freeze Meta | Start change camera
         if (this.freezeMeta === undefined) {
