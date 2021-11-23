@@ -22,15 +22,19 @@ class MultiVisionPlayer {
                 const sourceBuffer = this.mediaSource!.addSourceBuffer(
                     setting.mimeCodec
                 );
+                const audioBuffer = this.mediaSource!.addSourceBuffer(
+                    setting.audioMimeCodec
+                )
                 this.bufferManager = new BufferManager(
                     sourceBuffer,
+                    audioBuffer,
                     this.HTMLElement
                 )
                 this.bufferManager.on(
                     BufferEvent.COMPLETE,
                     () => {
                         if (this.mediaSource!.readyState === 'open') {
-                            console.debug('Complete fetch!')
+                            console.debug('Complete play!')
                             this.mediaSource!.endOfStream();
                         }
                     }

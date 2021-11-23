@@ -3,7 +3,13 @@ interface SegmentFetchMeta {
     cameraIndex: number;
     segmentIndex: number;
 }
-type FetchCallback = (cameraIndex:string, segmentIndex:number, arrayBuffer: ArrayBuffer) => void;
+type FetchCallback = (cameraIndex: string, segmentIndex: number, arrayBuffer: ArrayBuffer) => void;
+
+function pad(num: number | string, size: number) {
+    let numStr = num.toString();
+    while (numStr.length < size) numStr = "0" + numStr;
+    return numStr;
+}
 
 
 // Main
@@ -21,22 +27,32 @@ class SegmentFetcher {
     }
 
     fetch(currentCameraIndex: number): Promise<SegmentFetchMeta> {
+        console.debug(`Fetch with camera ${currentCameraIndex}`)
         this.isFetching = true;
 
         // Define segment filename
+        console.debug(`Define segment`)
         let segmentName: string;
         if (this.currentIndex === 0) {
-            segmentName = '/init.mp4';
+            segmentName = '/init.m4s';
         }else {
-            segmentName = `/${this.currentIndex}.m4s`;
+            segmentName = `/${pad(this.currentIndex, 4)}.m4s`;
         }
+        console.debug(`Fetch file ${segmentName}`)
 
         // Batch fetch for multiple cameras
         let fetchPromises: [Promise<void>?] = [];
         this.cameraIndexList.forEach((cameraIndex) => {
-            const fetchPromise = fetch(`${cameraIndex}/${segmentName}`).then(
-                resp => resp.arrayBuffer()
-            ).then(arrayBuffer => {
+            console.debug(`Fetch for camera ${cameraIndex}`)
+            let requestURL = `${pad(cameraIndex, 2)}${segmentName}`;
+            if (cameraIndex === 'audio') requestURL = requestURL.replace('m4s', 'webm');
+            const fetchPromise = fetch(
+                requestURL
+            ).then(resp => {
+                console.debug('Get arraybuffer');
+                return resp.arrayBuffer();
+            }).then(arrayBuffer => {
+                console.debug('Store to cache');
                 this.fetchCallback(cameraIndex, this.currentIndex, arrayBuffer);
             })
             fetchPromises.push(fetchPromise);
@@ -45,6 +61,7 @@ class SegmentFetcher {
         // Gather fetches and apply buffer
         return Promise.all(fetchPromises)
             .then(() => {
+                console.debug('All fetch finished')
                 this.isFetching = false;
                 const segmentIndex = this.currentIndex;
                 this.currentIndex += 1;

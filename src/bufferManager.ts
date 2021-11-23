@@ -27,6 +27,7 @@ interface FreezeMeta {
 // Main
 class BufferManager {
     private sourceBuffer: SourceBuffer;
+    private audioBuffer: SourceBuffer;
     private HTMLElement: HTMLMediaElement;
     private cameraBufferCache: {[key: string]: ArrayBuffer[]};
     private currentCameraIndex: number;
@@ -39,9 +40,10 @@ class BufferManager {
     private releaseFreezeMetaTimer?: ReturnType<typeof setTimeout>;
     private isPlayerPaused: boolean;
 
-    constructor(sourceBuffer: SourceBuffer, HTMLElement: HTMLMediaElement) {
+    constructor(sourceBuffer: SourceBuffer, audioBuffer: SourceBuffer, HTMLElement: HTMLMediaElement) {
         console.debug('Initialize BufferManager')
         this.sourceBuffer = sourceBuffer;
+        this.audioBuffer = audioBuffer;
         this.HTMLElement = HTMLElement;
         this.cameraBufferCache = {};
         this.currentCameraIndex = 1;
@@ -57,6 +59,7 @@ class BufferManager {
         [...Array(setting.cameraCount)].forEach((_, cameraIndex) => {
            this.cameraBufferCache[cameraIndex + 1] = [];
         });
+        this.cameraBufferCache['audio'] = [];
 
         // Apply BufferEvent to callbacks
         Object.values(BufferEvent).forEach(key => {
@@ -86,12 +89,15 @@ class BufferManager {
     }
 
     private update() {
+        console.debug('Update')
         // No task, back to standby
         if (this.taskQueue.length === 0) {
+            console.debug('Standby')
             this.isBusy = false;
             this.checkFetchingNecessary()
             return;
         }
+
         if (!this.isBusy) this.isBusy = true;
         if (this.timeSeekBack) {
             this.HTMLElement.currentTime = this.freezeMeta!.time;
@@ -103,6 +109,7 @@ class BufferManager {
         switch (task.type) {
             // Append
             case BufferTaskType.APPEND:
+                console.debug('BufferTask[Append]')
                 const segmentFetchMeta = task.payload!;
                 if (segmentFetchMeta.cameraIndex === this.currentCameraIndex) {
                     const buffer = this.cameraBufferCache
@@ -113,12 +120,17 @@ class BufferManager {
                         console.error(segmentFetchMeta);
                     }
                     this.sourceBuffer.appendBuffer(buffer);
+
+                    // Add audio
+                    const audioBuffer = this.cameraBufferCache['audio'][segmentFetchMeta.segmentIndex];
+                    this.audioBuffer.appendBuffer(audioBuffer)
                 }else{
                     this.update();
                 }
                 return;
             // Change camera
             case BufferTaskType.CHANGE:
+                console.debug('BufferTask[CHANGE]')
                 const fetchMeta = task.payload!;
                 if (fetchMeta.segmentIndex === -1) {
                     console.error('Index is -1');
@@ -133,6 +145,7 @@ class BufferManager {
                 return;
             // Remove
             case BufferTaskType.REMOVE:
+                console.debug('BufferTask[Remove]')
                 if (this.HTMLElement.currentTime >= this.getBufferEndTime()) {
                     this.update();
                     return;
@@ -162,20 +175,26 @@ class BufferManager {
     }
 
     checkFetchingNecessary() {
+        console.debug('Check fetching necessary')
         // Test file finish and callback once
         if (this.segmentFetcher.currentIndex >= 121) {
             if (this.sourceBuffer.updating) return;
             this.eventCallbacks[BufferEvent.COMPLETE].forEach(callbackFunc => {
                 callbackFunc();
             })
+            console.debug('Complete test, not fetch.');
             return;
         }
 
         // Check busy
-        if (this.isBusy || this.segmentFetcher.isFetching) return;
+        if (this.isBusy || this.segmentFetcher.isFetching) {
+            console.debug('Is busy, no fetch.');
+            return;
+        }
 
         // Fetch if not enough buffered
         if (this.getBufferEndTime() - this.HTMLElement.currentTime < setting.bufferPreCacheLength) {
+            console.debug('Need more buffer, fetch.');
             this.segmentFetcher.fetch(
                 this.currentCameraIndex
             ).then(segmentFetchResult => {
@@ -185,6 +204,8 @@ class BufferManager {
                 )
             })
         }
+
+        console.debug('End of checking');
     }
 
     clearFreezeMeta() {
