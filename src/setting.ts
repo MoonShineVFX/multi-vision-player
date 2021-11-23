@@ -1,5 +1,5 @@
 interface GlobalSetting {
-    mimeCodec: string;
+    videoMimeCodec: string;
     audioMimeCodec: string;
     playerHTMLElementID: string;
     controllerHTMLElementID: string;
@@ -11,7 +11,7 @@ interface GlobalSetting {
 }
 
 const setting: GlobalSetting = {
-    mimeCodec: 'video/mp4; codecs="avc1.7A0028"',
+    videoMimeCodec: 'video/mp4; codecs="avc1.7A0028"',
     audioMimeCodec: 'audio/webm; codecs="opus"',
     playerHTMLElementID: 'the-player',
     controllerHTMLElementID: 'the-controller',

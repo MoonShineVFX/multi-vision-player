@@ -26,7 +26,7 @@ class SegmentFetcher {
         this.currentIndex = 0;
     }
 
-    fetch(currentCameraIndex: number): Promise<SegmentFetchMeta> {
+    async fetchSegment(currentCameraIndex: number): Promise<SegmentFetchMeta> {
         console.debug(`Fetch with camera ${currentCameraIndex}`)
         this.isFetching = true;
 
@@ -42,34 +42,31 @@ class SegmentFetcher {
 
         // Batch fetch for multiple cameras
         let fetchPromises: [Promise<void>?] = [];
-        this.cameraIndexList.forEach((cameraIndex) => {
+        for (const cameraIndex of this.cameraIndexList) {
             console.debug(`Fetch for camera ${cameraIndex}`)
             let requestURL = `${pad(cameraIndex, 2)}${segmentName}`;
-            if (cameraIndex === 'audio') requestURL = requestURL.replace('m4s', 'webm');
-            const fetchPromise = fetch(
-                requestURL
-            ).then(resp => {
-                console.debug('Get arraybuffer');
-                return resp.arrayBuffer();
-            }).then(arrayBuffer => {
-                console.debug('Store to cache');
-                this.fetchCallback(cameraIndex, this.currentIndex, arrayBuffer);
-            })
-            fetchPromises.push(fetchPromise);
-        })
+            if (cameraIndex === 'audio') {
+                requestURL = requestURL.replace('m4s', 'webm');
+            }
+
+            const response = await fetch(requestURL);
+            const result = response.arrayBuffer().then(
+                buffer => this.fetchCallback(cameraIndex, this.currentIndex, buffer)
+            );
+
+            fetchPromises.push(result);
+        }
 
         // Gather fetches and apply buffer
-        return Promise.all(fetchPromises)
-            .then(() => {
-                console.debug('All fetch finished')
-                this.isFetching = false;
-                const segmentIndex = this.currentIndex;
-                this.currentIndex += 1;
-                return {
-                    cameraIndex: currentCameraIndex,
-                    segmentIndex: segmentIndex
-                }
-            })
+        await Promise.all(fetchPromises)
+        console.debug('Segment fetch finished')
+        this.isFetching = false;
+        const segmentIndex = this.currentIndex;
+        this.currentIndex += 1;
+        return {
+            cameraIndex: currentCameraIndex,
+            segmentIndex: segmentIndex
+        }
     }
 }
 

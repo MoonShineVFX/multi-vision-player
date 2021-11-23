@@ -26,7 +26,7 @@ interface FreezeMeta {
 
 // Main
 class BufferManager {
-    private sourceBuffer: SourceBuffer;
+    private videoBuffer: SourceBuffer;
     private audioBuffer: SourceBuffer;
     private HTMLElement: HTMLMediaElement;
     private cameraBufferCache: {[key: string]: ArrayBuffer[]};
@@ -40,9 +40,9 @@ class BufferManager {
     private releaseFreezeMetaTimer?: ReturnType<typeof setTimeout>;
     private isPlayerPaused: boolean;
 
-    constructor(sourceBuffer: SourceBuffer, audioBuffer: SourceBuffer, HTMLElement: HTMLMediaElement) {
+    constructor(videoBuffer: SourceBuffer, audioBuffer: SourceBuffer, HTMLElement: HTMLMediaElement) {
         console.debug('Initialize BufferManager')
-        this.sourceBuffer = sourceBuffer;
+        this.videoBuffer = videoBuffer;
         this.audioBuffer = audioBuffer;
         this.HTMLElement = HTMLElement;
         this.cameraBufferCache = {};
@@ -66,8 +66,8 @@ class BufferManager {
             this.eventCallbacks[key] = [];
         })
 
-        // Add callback for sourceBuffer and HTMLElement
-        this.sourceBuffer.addEventListener(
+        // Add callback for videoBuffer and HTMLElement
+        this.videoBuffer.addEventListener(
             'updateend',
             () => this.update()
         );
@@ -119,7 +119,7 @@ class BufferManager {
                         console.error('Undefined');
                         console.error(segmentFetchMeta);
                     }
-                    this.sourceBuffer.appendBuffer(buffer);
+                    this.videoBuffer.appendBuffer(buffer);
 
                     // Add audio
                     const audioBuffer = this.cameraBufferCache['audio'][segmentFetchMeta.segmentIndex];
@@ -141,7 +141,7 @@ class BufferManager {
                     [fetchMeta.cameraIndex]
                     [fetchMeta.segmentIndex];
                 this.timeSeekBack = true;
-                this.sourceBuffer.appendBuffer(buffer);
+                this.videoBuffer.appendBuffer(buffer);
                 return;
             // Remove
             case BufferTaskType.REMOVE:
@@ -150,7 +150,7 @@ class BufferManager {
                     this.update();
                     return;
                 }
-                this.sourceBuffer.remove(
+                this.videoBuffer.remove(
                     this.HTMLElement.currentTime,
                     this.getBufferEndTime()
                 );
@@ -161,8 +161,8 @@ class BufferManager {
     }
 
     private getBufferEndTime(): number {
-        if (this.sourceBuffer.buffered.length === 0) return 0;
-        return this.sourceBuffer.buffered.end(0);
+        if (this.videoBuffer.buffered.length === 0) return 0;
+        return this.videoBuffer.buffered.end(0);
     }
 
     private addTask(taskType: BufferTaskType, payload?: SegmentFetchMeta) {
@@ -178,7 +178,7 @@ class BufferManager {
         console.debug('Check fetching necessary')
         // Test file finish and callback once
         if (this.segmentFetcher.currentIndex >= 121) {
-            if (this.sourceBuffer.updating) return;
+            if (this.videoBuffer.updating) return;
             this.eventCallbacks[BufferEvent.COMPLETE].forEach(callbackFunc => {
                 callbackFunc();
             })
@@ -195,7 +195,7 @@ class BufferManager {
         // Fetch if not enough buffered
         if (this.getBufferEndTime() - this.HTMLElement.currentTime < setting.bufferPreCacheLength) {
             console.debug('Need more buffer, fetch.');
-            this.segmentFetcher.fetch(
+            this.segmentFetcher.fetchSegment(
                 this.currentCameraIndex
             ).then(segmentFetchResult => {
                 this.addTask(

@@ -19,14 +19,14 @@ class MultiVisionPlayer {
 
         this.initializeMediaSource()
             .then(() => {
-                const sourceBuffer = this.mediaSource!.addSourceBuffer(
-                    setting.mimeCodec
+                const videoBuffer = this.mediaSource!.addSourceBuffer(
+                    setting.videoMimeCodec
                 );
                 const audioBuffer = this.mediaSource!.addSourceBuffer(
                     setting.audioMimeCodec
                 )
                 this.bufferManager = new BufferManager(
-                    sourceBuffer,
+                    videoBuffer,
                     audioBuffer,
                     this.HTMLElement
                 )
@@ -45,8 +45,8 @@ class MultiVisionPlayer {
     private initializeMediaSource(): Promise<Event> {
         return new Promise<Event>(resolve => {
             this.mediaSource = new MediaSource();
-            this.HTMLElement.src = URL.createObjectURL(this.mediaSource);
             this.mediaSource.addEventListener('sourceopen', resolve);
+            this.HTMLElement.src = URL.createObjectURL(this.mediaSource);
         });
     }
 
