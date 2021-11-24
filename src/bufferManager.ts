@@ -82,7 +82,6 @@ class BufferManager {
 
         // Segment Fetcher
         this.segmentFetcher = new SegmentFetcher(
-            Object.keys(this.cameraBufferCache),
             (cameraIndex, segmentIndex, arrayBuffer) => {
                 this.cameraBufferCache[cameraIndex][segmentIndex] = arrayBuffer;
             }

@@ -9,6 +9,7 @@ interface GlobalSetting {
     freezeTimeDelay: number;
     minimumCameraChangeInterval: number;
     endFrame: number;
+    streamHost: string;
 }
 
 const setting: GlobalSetting = {
@@ -21,7 +22,8 @@ const setting: GlobalSetting = {
     segmentPerSecond: 10,
     freezeTimeDelay: 0.07,
     minimumCameraChangeInterval: 0.03,
-    endFrame: 121
+    endFrame: 121,
+    streamHost: 'http://127.0.0.1:8081'
 }
 
 export default setting;

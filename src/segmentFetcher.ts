@@ -1,27 +1,21 @@
 // Define
+import setting from "./setting";
+
 interface SegmentFetchMeta {
     cameraIndex: number;
     segmentIndex: number;
 }
-type FetchCallback = (cameraIndex: string, segmentIndex: number, arrayBuffer: ArrayBuffer) => void;
-
-function pad(num: number | string, size: number) {
-    let numStr = num.toString();
-    while (numStr.length < size) numStr = "0" + numStr;
-    return numStr;
-}
+type FetchCallback = (cameraIndex: number | string, segmentIndex: number, arrayBuffer: ArrayBuffer) => void;
 
 
 // Main
 class SegmentFetcher {
     private fetchCallback: FetchCallback;
-    private cameraIndexList: string[];
     currentIndex: number;
     isFetching: boolean;
 
-    constructor(cameraIndexList: string[], fetchCallback: FetchCallback) {
+    constructor(fetchCallback: FetchCallback) {
         console.info('Initialize SegmentFetcher')
-        this.cameraIndexList = cameraIndexList;
         this.fetchCallback = fetchCallback;
         this.isFetching = false;
         this.currentIndex = 0;
@@ -30,34 +24,33 @@ class SegmentFetcher {
     async fetchSegment(currentCameraIndex: number): Promise<SegmentFetchMeta> {
         this.isFetching = true;
 
-        // Define segment filename
-        let segmentName: string;
-        if (this.currentIndex === 0) {
-            segmentName = '/init.m4s';
-        }else {
-            segmentName = `/${pad(this.currentIndex, 4)}.m4s`;
-        }
-        console.debug(`Fetch segment : camera ${currentCameraIndex} / ${segmentName}`)
-
         // Batch fetch for multiple cameras
-        let fetchPromises: [Promise<void>?] = [];
-        for (const cameraIndex of this.cameraIndexList) {
-            let requestURL = `${pad(cameraIndex, 2)}${segmentName}`;
-            if (cameraIndex === 'audio') {
-                requestURL = requestURL.replace('m4s', 'webm');
-            }
+        let requestURL = `${setting.streamHost}/stream/${this.currentIndex}`;
+        const response = await fetch(requestURL);
 
-            const response = await fetch(requestURL);
-            const result = response.arrayBuffer().then(
-                buffer => this.fetchCallback(cameraIndex, this.currentIndex, buffer)
-            );
+        const buffer = await response.arrayBuffer();
+        let cursor = 4 * (setting.cameraCount + 1);
+        const size_arr = new Uint32Array(buffer.slice(0, cursor));
 
-            fetchPromises.push(result);
+        // Apply cache to camera
+        for (let count = 0; count < setting.cameraCount; count++){
+            const size = size_arr[count];
+            this.fetchCallback(
+                count + 1,
+                this.currentIndex,
+                buffer.slice(cursor, cursor + size)
+            )
+            cursor += size;
         }
 
-        // Gather fetches and apply buffer
-        await Promise.all(fetchPromises)
-        console.debug('Segment fetch finished')
+        // Apply cache to audio
+        this.fetchCallback(
+            'audio',
+            this.currentIndex,
+            buffer.slice(cursor)
+        )
+
+        console.debug('Segment fetch finished');
         this.isFetching = false;
         const segmentIndex = this.currentIndex;
         this.currentIndex += 1;
