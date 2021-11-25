@@ -8,6 +8,7 @@ class MultiVisionPlayer {
     private bufferManager?: BufferManager;
     private changeCameraStepsQueue: number[];
     private isCameraChanging: boolean;
+    private isBufferCompledetd: boolean;
 
     constructor() {
         console.info('Initialize MultiVisionPlayer')
@@ -16,6 +17,7 @@ class MultiVisionPlayer {
         this.bufferManager = undefined;
         this.changeCameraStepsQueue = [];
         this.isCameraChanging = false;
+        this.isBufferCompledetd = false;
 
         this.initializeMediaSource()
             .then(() => {
@@ -36,6 +38,7 @@ class MultiVisionPlayer {
                         if (this.mediaSource!.readyState === 'open') {
                             console.info('Complete play!')
                             this.mediaSource!.endOfStream();
+                            this.isBufferCompledetd = true;
                         }
                     }
                 )
@@ -63,6 +66,13 @@ class MultiVisionPlayer {
         if (this.changeCameraStepsQueue.length === 0) {
             this.isCameraChanging = false;
             console.debug('Finish change camera')
+            if (this.isBufferCompledetd) {
+                try {
+                    this.mediaSource!.endOfStream();
+                } catch (e) {
+                    console.warn(`EndStreamError: ${e}`);
+                }
+            }
             return;
         }
         this.bufferManager!.changeCamera(
