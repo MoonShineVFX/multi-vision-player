@@ -14,7 +14,7 @@ interface GlobalSetting {
 
 const setting: GlobalSetting = {
     videoMimeCodec: 'video/mp4; codecs="avc1.7A0028"',
-    audioMimeCodec: 'audio/webm; codecs="opus"',
+    audioMimeCodec: 'audio/mp4; codecs="mp4a.40.2"',
     playerHTMLElementID: 'the-player',
     controllerHTMLElementID: 'the-controller',
     bufferPreCacheLength: 5,
