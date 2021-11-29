@@ -8,8 +8,11 @@ interface GlobalSetting {
     segmentPerSecond: number;
     freezeTimeDelay: number;
     minimumCameraChangeInterval: number;
-    endFrame: number;
+    endSegment: number;
     streamHost: string;
+    sourceDuration: number;
+    cachePurgeInterval: number;
+    purgePreservedLength: number;
 }
 
 const setting: GlobalSetting = {
@@ -18,12 +21,15 @@ const setting: GlobalSetting = {
     playerHTMLElementID: 'the-player',
     controllerHTMLElementID: 'the-controller',
     bufferPreCacheLength: 5,
-    cameraCount: 24,
+    cameraCount: 16,
     segmentPerSecond: 10,
     freezeTimeDelay: 0.07,
     minimumCameraChangeInterval: 0.03,
-    endFrame: 121,
-    streamHost: 'http://127.0.0.1:8081'
+    endSegment: 5972,
+    streamHost: 'http://127.0.0.1:8081',
+    sourceDuration: 591.8,
+    cachePurgeInterval: 5,
+    purgePreservedLength: 2
 }
 
 export default setting;

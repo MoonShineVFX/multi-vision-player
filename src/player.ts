@@ -35,6 +35,7 @@ class MultiVisionPlayer {
                 this.bufferManager.on(
                     BufferEvent.COMPLETE,
                     () => {
+                        // When buffer completed, close stream
                         if (this.mediaSource!.readyState === 'open') {
                             console.info('Complete play!')
                             this.mediaSource!.endOfStream();
@@ -42,6 +43,7 @@ class MultiVisionPlayer {
                         }
                     }
                 )
+                this.mediaSource!.duration = setting.sourceDuration;
             })
     }
 

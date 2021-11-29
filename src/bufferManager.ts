@@ -1,17 +1,18 @@
-import { SegmentFetcher, SegmentFetchMeta } from "./segmentFetcher";
+import { SegmentFetcher, SegmentCacheMeta } from "./segmentFetcher";
 import setting from "./setting";
 
 
 // Define
 enum BufferTaskType {
     APPEND,
-    REMOVE,
-    CHANGE
+    PURGE,
+    CHANGE,
+    RESUME
 }
 
 interface BufferTask {
     type: BufferTaskType,
-    payload: SegmentFetchMeta | undefined
+    payload: any | undefined
 }
 
 const BufferEvent: {[key: string]: string} = {
@@ -20,7 +21,8 @@ const BufferEvent: {[key: string]: string} = {
 
 interface FreezeMeta {
     time: number;
-    loopSegmentIndices: number[];
+    segmentIndex: number;
+    isPaused: boolean;
 }
 
 
@@ -29,18 +31,17 @@ class BufferManager {
     private videoBuffer: SourceBuffer;
     private audioBuffer: SourceBuffer;
     private HTMLElement: HTMLMediaElement;
-    private cameraBufferCache: {[key: string]: ArrayBuffer[]};
+    private cameraBufferCache: {[key: string]: (ArrayBuffer | null)[]};
     private currentCameraIndex: number;
     private segmentFetcher: SegmentFetcher;
     private taskQueue: BufferTask[];
     private isBusy: boolean;
     private isCompleted: boolean;
     private eventCallbacks: {[bufferEvent: string]: (() => void)[]};
-    private timeSeekBack: boolean;
     private freezeMeta?: FreezeMeta;
     private releaseFreezeMetaTimer?: ReturnType<typeof setTimeout>;
-    private isPlayerPaused: boolean;
-    private updateCallback: () => void
+    private updateCallback: () => void;
+    private purgeTriggerTime: number;
 
     constructor(videoBuffer: SourceBuffer, audioBuffer: SourceBuffer, HTMLElement: HTMLMediaElement) {
         console.info('Initialize BufferManager')
@@ -53,11 +54,10 @@ class BufferManager {
         this.isBusy = false;
         this.isCompleted = false;
         this.eventCallbacks = {};
-        this.timeSeekBack = false;
         this.freezeMeta = undefined;
         this.releaseFreezeMetaTimer = undefined;
-        this.isPlayerPaused = false;
         this.updateCallback = () => this.checkFetchingNecessary();
+        this.purgeTriggerTime = setting.cachePurgeInterval + setting.purgePreservedLength;
 
         // Fill cameraBufferCache with camera count
         [...Array(setting.cameraCount)].forEach((_, cameraIndex) => {
@@ -91,6 +91,15 @@ class BufferManager {
         this.update();
     }
 
+    private static getSegmentIndexByTime(time: number) {
+        return Math.max(Math.floor(time * setting.segmentPerSecond), 0);
+    }
+
+    private static getTimeBySegmentIndex(index: number) {
+        if (index < 0) return 0;
+        return index / setting.segmentPerSecond;
+    }
+
     private update() {
         console.debug('Update')
         // No task, back to standby
@@ -103,15 +112,11 @@ class BufferManager {
         }
 
         if (!this.isBusy) this.isBusy = true;
-        if (this.timeSeekBack) {
-            this.HTMLElement.currentTime = this.freezeMeta!.time;
-            this.timeSeekBack = false;
-        }
 
         // Deal with task
         let task = this.taskQueue.shift()!;
-        if (task == undefined) {
-            console.debug('Task queue is empty.')
+        if (task === undefined) {
+            console.error('Task queue is empty.')
             return;
         }
 
@@ -119,20 +124,29 @@ class BufferManager {
             // Append
             case BufferTaskType.APPEND:
                 console.debug('BufferTask[Append]')
-                const segmentFetchMeta = task.payload!;
-                if (segmentFetchMeta.cameraIndex === this.currentCameraIndex) {
+                const segmentCacheMeta: SegmentCacheMeta = task.payload!;
+                if (segmentCacheMeta.segmentIndex === -1) {
+                    console.warn('Index is -1');
+                    console.warn(segmentCacheMeta);
+                    this.update();
+                    return;
+                }
+                if (segmentCacheMeta.cameraIndex === this.currentCameraIndex) {
+                    // Add(Replace) video
                     const buffer = this.cameraBufferCache
-                        [segmentFetchMeta.cameraIndex]
-                        [segmentFetchMeta.segmentIndex];
+                        [segmentCacheMeta.cameraIndex]
+                        [segmentCacheMeta.segmentIndex];
                     if (buffer === undefined) {
-                        console.error('Undefined');
-                        console.error(segmentFetchMeta);
+                        console.warn('Buffer is undefined');
+                        console.warn(segmentCacheMeta);
                     }
-                    this.videoBuffer.appendBuffer(buffer);
+                    this.videoBuffer.appendBuffer(buffer!);
 
                     // Add audio
-                    const audioBuffer = this.cameraBufferCache['audio'][segmentFetchMeta.segmentIndex];
-                    this.audioBuffer.appendBuffer(audioBuffer)
+                    if (this.freezeMeta === undefined) {
+                        const audioBuffer = this.cameraBufferCache['audio'][segmentCacheMeta.segmentIndex];
+                        this.audioBuffer.appendBuffer(audioBuffer!);
+                    }
                 }else{
                     this.update();
                 }
@@ -140,41 +154,81 @@ class BufferManager {
             // Change camera
             case BufferTaskType.CHANGE:
                 console.debug('BufferTask[CHANGE]')
-                const fetchMeta = task.payload!;
-                if (fetchMeta.segmentIndex === -1) {
-                    console.error('Index is -1');
-                    console.error(fetchMeta);
-                    return;
-                }
-                const buffer = this.cameraBufferCache
-                    [fetchMeta.cameraIndex]
-                    [fetchMeta.segmentIndex];
-                this.timeSeekBack = true;
-                this.videoBuffer.appendBuffer(buffer);
-                return;
-            // Remove
-            case BufferTaskType.REMOVE:
-                console.debug('BufferTask[Remove]')
-                if (this.HTMLElement.currentTime >= this.getBufferEndTime()) {
+                const changeMeta: SegmentCacheMeta = task.payload!;
+                if (changeMeta.segmentIndex === -1) {
+                    console.warn('Index is -1');
+                    console.warn(changeMeta);
                     this.update();
                     return;
                 }
-                this.videoBuffer.remove(
-                    this.HTMLElement.currentTime,
-                    this.getBufferEndTime()
-                );
+                const buffer = this.cameraBufferCache
+                    [changeMeta.cameraIndex]
+                    [changeMeta.segmentIndex];
+                this.videoBuffer.appendBuffer(buffer!);
+                this.HTMLElement.currentTime =
+                    BufferManager.getTimeBySegmentIndex(changeMeta.segmentIndex - 1);
+                return;
+            // Purge
+            case BufferTaskType.PURGE:
+                console.debug('BufferTask[Purge]');
+                // Get purge range
+                const removeEndTime: number = task.payload! - setting.purgePreservedLength;
+                const removeStartTime = removeEndTime - setting.cachePurgeInterval
+
+                // Remove from SourceBuffer
+                this.videoBuffer.remove(removeStartTime, removeEndTime);
+                this.audioBuffer.remove(removeStartTime, removeEndTime);
+
+                // Convert purge range to index
+                const removeStartSegmentIndex = BufferManager.getSegmentIndexByTime(removeStartTime);
+                const removeEndSegmentIndex = BufferManager.getSegmentIndexByTime(removeEndTime)
+
+                // Remove from camera buffer cache
+                Object.values(this.cameraBufferCache).forEach(bufferCache => {
+                    for (let i = removeStartSegmentIndex; i < removeEndSegmentIndex + 1; i++) {
+                        bufferCache[i] = null;
+                    }
+                });
+                return;
+            // Resume
+            case BufferTaskType.RESUME:
+                console.debug('BufferTask[Resume]');
+                // Calculate the videoBuffer range which should replace by new camera
+                const freezeMeta: FreezeMeta = task.payload!;
+                const cameraBuffer = this.cameraBufferCache[this.currentCameraIndex];
+                const lastIndex = Number(Object.keys(cameraBuffer)[Object.keys(cameraBuffer).length - 1]);
+
+                // Check replace needed
+                if (lastIndex > freezeMeta.segmentIndex + 1) {
+                    console.debug(`Resume cache: ${freezeMeta.segmentIndex} => ${lastIndex}`);
+                    for (let i = freezeMeta.segmentIndex + 2; i < lastIndex + 1; i++) {
+                        this.addTask(
+                            BufferTaskType.APPEND,
+                            {
+                                cameraIndex: this.currentCameraIndex,
+                                segmentIndex: i
+                            }
+                        )
+                    }
+                }
+
+                // Resume playback
+                this.HTMLElement.currentTime =
+                    BufferManager.getTimeBySegmentIndex(freezeMeta.segmentIndex - 1);
+                if (!freezeMeta.isPaused) {
+                    this.HTMLElement.play().catch(
+                        reason => console.error(reason)
+                    )
+                }
+
+                this.update();
                 return;
             default:
-                console.error('Wrong Task Type')
+                console.error('Wrong Task Type');
         }
     }
 
-    private getBufferEndTime(): number {
-        if (this.videoBuffer.buffered.length === 0) return 0;
-        return this.videoBuffer.buffered.end(0);
-    }
-
-    private addTask(taskType: BufferTaskType, payload?: SegmentFetchMeta) {
+    private addTask(taskType: BufferTaskType, payload?: any) {
         this.taskQueue.push({
             type: taskType,
             payload: payload
@@ -186,7 +240,7 @@ class BufferManager {
     private checkFetchingNecessary() {
         console.debug('Check fetching necessary')
         // Test file finish and callback once
-        if (this.segmentFetcher.currentIndex >= setting.endFrame && !this.isCompleted) {
+        if (this.segmentFetcher.currentIndex >= setting.endSegment && !this.isCompleted) {
             if (this.videoBuffer.updating) return;
             this.eventCallbacks[BufferEvent.COMPLETE].forEach(callbackFunc => {
                 callbackFunc();
@@ -200,6 +254,15 @@ class BufferManager {
             return;
         }
 
+        // Purge played buffer for memory optimization
+        if (this.HTMLElement.currentTime > this.purgeTriggerTime) {
+            this.addTask(
+                BufferTaskType.PURGE,
+                this.purgeTriggerTime
+            );
+            this.purgeTriggerTime += setting.cachePurgeInterval;
+        }
+
         // Check busy
         if (this.isBusy || this.segmentFetcher.isFetching) {
             console.debug('Is busy, no fetch.');
@@ -207,7 +270,9 @@ class BufferManager {
         }
 
         // Fetch if not enough buffered
-        if (this.getBufferEndTime() - this.HTMLElement.currentTime < setting.bufferPreCacheLength) {
+        const cacheLength =
+            BufferManager.getTimeBySegmentIndex(this.segmentFetcher.currentIndex) - this.HTMLElement.currentTime;
+        if (cacheLength < setting.bufferPreCacheLength) {
             console.debug('Need more buffer, fetch.');
             this.segmentFetcher.fetchSegment(
                 this.currentCameraIndex
@@ -223,9 +288,17 @@ class BufferManager {
     }
 
     private clearFreezeMeta() {
+        // Clear freeze temp data
+        const freezeMetaPayload = this.freezeMeta;
         this.freezeMeta = undefined;
+        if (this.releaseFreezeMetaTimer !== undefined) {
+            clearTimeout(this.releaseFreezeMetaTimer!);
+        }
         this.releaseFreezeMetaTimer = undefined;
-        if (!this.isPlayerPaused) this.HTMLElement.play();
+        this.addTask(
+            BufferTaskType.RESUME,
+            freezeMetaPayload
+        )
     }
 
     changeCamera(step: number) {
@@ -241,23 +314,23 @@ class BufferManager {
         // Change camera index
         const currentCameraIndex = this.currentCameraIndex + step;
         this.currentCameraIndex = currentCameraIndex;
-        console.log(`Change camera to ${this.currentCameraIndex}`)
+        console.info(`Change camera to ${this.currentCameraIndex}`)
 
         // Freeze Meta | Start change camera
         if (this.freezeMeta === undefined) {
             // Mark player paused state
-            this.isPlayerPaused = this.HTMLElement.paused;
-            if (!this.isPlayerPaused) this.HTMLElement.pause();
+            const isPlayerPaused = this.HTMLElement.paused;
+            if (isPlayerPaused) this.HTMLElement.pause();
 
             // Set freeze meta
             const currentTime = this.HTMLElement.currentTime;
-            const playSegmentIndex = Math.max(Math.floor(currentTime * setting.segmentPerSecond) - 1, 0);
-            const cameraBufferCache = this.cameraBufferCache[currentCameraIndex];
-            const loopCount = cameraBufferCache.length - playSegmentIndex;
+            const playSegmentIndex = BufferManager.getSegmentIndexByTime(currentTime);
             this.freezeMeta = {
                 time: currentTime,
-                loopSegmentIndices: [...Array(loopCount).keys()].map(i => i + playSegmentIndex)
+                segmentIndex: playSegmentIndex,
+                isPaused: isPlayerPaused
             }
+            console.debug(this.freezeMeta)
         }
         if (this.releaseFreezeMetaTimer !== undefined) {
             clearTimeout(this.releaseFreezeMetaTimer!);
@@ -267,21 +340,27 @@ class BufferManager {
             setting.freezeTimeDelay * 1000
         );
 
-        this.freezeMeta.loopSegmentIndices.forEach((thisSegmentIndex, index) => {
-            let taskType: BufferTaskType;
-            if (index === 0) {
-                taskType = BufferTaskType.CHANGE
-            } else {
-                taskType = BufferTaskType.APPEND
+        this.addTask(
+            BufferTaskType.APPEND,
+            {
+                cameraIndex: currentCameraIndex,
+                segmentIndex: this.freezeMeta.segmentIndex - 1
             }
-            this.addTask(
-                taskType,
-                {
-                    cameraIndex: currentCameraIndex,
-                    segmentIndex: thisSegmentIndex
-                }
-            )
-        });
+        )
+        this.addTask(
+            BufferTaskType.CHANGE,
+            {
+                cameraIndex: currentCameraIndex,
+                segmentIndex: this.freezeMeta.segmentIndex
+            }
+        )
+        this.addTask(
+            BufferTaskType.APPEND,
+            {
+                cameraIndex: currentCameraIndex,
+                segmentIndex: this.freezeMeta.segmentIndex + 1
+            }
+        )
     }
 
     on(bufferEvent: string, callback: () => void) {

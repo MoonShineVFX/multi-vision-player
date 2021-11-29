@@ -1,7 +1,7 @@
 // Define
 import setting from "./setting";
 
-interface SegmentFetchMeta {
+interface SegmentCacheMeta {
     cameraIndex: number;
     segmentIndex: number;
 }
@@ -21,7 +21,7 @@ class SegmentFetcher {
         this.currentIndex = 0;
     }
 
-    async fetchSegment(currentCameraIndex: number): Promise<SegmentFetchMeta> {
+    async fetchSegment(currentCameraIndex: number): Promise<SegmentCacheMeta> {
         this.isFetching = true;
 
         // Batch fetch for multiple cameras
@@ -61,4 +61,4 @@ class SegmentFetcher {
     }
 }
 
-export { SegmentFetcher, SegmentFetchMeta };
+export { SegmentFetcher, SegmentCacheMeta };
