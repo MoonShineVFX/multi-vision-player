@@ -75,11 +75,27 @@ class BufferManager {
         // Add callback for videoBuffer and HTMLElement
         this.videoBuffer.addEventListener(
             'updateend',
-            () => this.update()
+            () => this.processTask()
         );
         this.HTMLElement.addEventListener(
             'timeupdate',
             this.updateCallback
+        )
+        this.HTMLElement.addEventListener(
+            'seeked',
+            () => {console.log('SEEKED')}
+        )
+        this.HTMLElement.addEventListener(
+            'suspend',
+            () => {console.log('SUSPEND')}
+        )
+        this.HTMLElement.addEventListener(
+            'stalled',
+            () => {console.log('STALLED')}
+        )
+        this.HTMLElement.addEventListener(
+            'seeking',
+            e => {console.log(e)}
         )
 
         // Segment Fetcher
@@ -90,7 +106,7 @@ class BufferManager {
         );
 
         // Auto run first time
-        this.update();
+        this.processTask();
     }
 
     private static getSegmentIndexByTime(time: number) {
@@ -102,8 +118,8 @@ class BufferManager {
         return index / setting.segmentPerSecond;
     }
 
-    private update() {
-        console.debug('Update')
+    private processTask() {
+        console.debug('Process Task')
         // No task, back to standby
         if (this.taskQueue.length === 0) {
             console.debug('Standby')
@@ -130,7 +146,7 @@ class BufferManager {
                 if (segmentCacheMeta.segmentIndex === -1) {
                     console.warn('Index is -1');
                     console.warn(segmentCacheMeta);
-                    this.update();
+                    this.processTask();
                     return;
                 }
                 if (segmentCacheMeta.cameraIndex === this.currentCameraIndex) {
@@ -150,7 +166,7 @@ class BufferManager {
                         this.audioBuffer.appendBuffer(audioBuffer!);
                     }
                 }else{
-                    this.update();
+                    this.processTask();
                 }
                 return;
             // Change camera
@@ -160,7 +176,7 @@ class BufferManager {
                 if (changeMeta.segmentIndex === -1) {
                     console.warn('Index is -1');
                     console.warn(changeMeta);
-                    this.update();
+                    this.processTask();
                     return;
                 }
                 const buffer = this.cameraBufferCache
@@ -223,7 +239,7 @@ class BufferManager {
                     )
                 }
 
-                this.update();
+                this.processTask();
                 return;
             default:
                 console.error('Wrong Task Type');
@@ -236,7 +252,7 @@ class BufferManager {
             payload: payload
         })
         // Start update if standby
-        if (!this.isBusy) this.update();
+        if (!this.isBusy) this.processTask();
     }
 
     private checkFetchingNecessary() {
