@@ -1,4 +1,5 @@
 import { SegmentFetcher, SegmentCacheMeta } from "./segmentFetcher";
+import MultiVisionPlayer from "./player";
 import setting from "./setting";
 
 
@@ -7,7 +8,8 @@ enum BufferTaskType {
     APPEND,
     PURGE,
     CHANGE,
-    RESUME
+    RESUME,
+    RESET
 }
 
 interface BufferTask {
@@ -30,42 +32,42 @@ interface FreezeMeta {
 class BufferManager {
     private videoBuffer: SourceBuffer;
     private audioBuffer: SourceBuffer;
-    private HTMLElement: HTMLMediaElement;
+    private player: MultiVisionPlayer;
+
     private cameraBufferCache: {[key: string]: (ArrayBuffer | null)[]};
-    private currentCameraIndex: number;
     private segmentFetcher: SegmentFetcher;
+
     private taskQueue: BufferTask[];
-    private isBusy: boolean;
-    private isCompleted: boolean;
     private eventCallbacks: {[bufferEvent: string]: (() => void)[]};
+
     private freezeMeta?: FreezeMeta;
     private releaseFreezeMetaTimer?: ReturnType<typeof setTimeout>;
-    private updateCallback: () => void;
-    private purgeTriggerTime: number;
-    private playAfterCaching: boolean;
 
-    constructor(videoBuffer: SourceBuffer, audioBuffer: SourceBuffer, HTMLElement: HTMLMediaElement) {
+    private currentCameraIndex: number;
+    private purgeTriggerTime: number;
+
+    private isBusyProcessingTask: boolean;
+    private isCachingCompleted: boolean;
+    private isAutoplayAfterPrecaching: boolean;
+
+    constructor(videoBuffer: SourceBuffer, audioBuffer: SourceBuffer, player: MultiVisionPlayer) {
         console.info('Initialize BufferManager')
         this.videoBuffer = videoBuffer;
         this.audioBuffer = audioBuffer;
-        this.HTMLElement = HTMLElement;
+        this.player = player;
         this.cameraBufferCache = {};
         this.currentCameraIndex = 1;
         this.taskQueue = [];
-        this.isBusy = false;
-        this.isCompleted = false;
+        this.isBusyProcessingTask = false;
+        this.isCachingCompleted = false;
         this.eventCallbacks = {};
         this.freezeMeta = undefined;
         this.releaseFreezeMetaTimer = undefined;
-        this.updateCallback = () => this.checkFetchingNecessary();
         this.purgeTriggerTime = setting.cachePurgeInterval + setting.purgePreservedLength;
-        this.playAfterCaching = true;
+        this.isAutoplayAfterPrecaching = true;
 
-        // Fill cameraBufferCache with camera count
-        [...Array(setting.cameraCount)].forEach((_, cameraIndex) => {
-           this.cameraBufferCache[cameraIndex + 1] = [];
-        });
-        this.cameraBufferCache['audio'] = [];
+        // Create buffer cache
+        this.initialBufferCache();
 
         // Apply BufferEvent to callbacks
         Object.values(BufferEvent).forEach(key => {
@@ -77,25 +79,9 @@ class BufferManager {
             'updateend',
             () => this.processTask()
         );
-        this.HTMLElement.addEventListener(
+        this.player.addEventListener(
             'timeupdate',
-            this.updateCallback
-        )
-        this.HTMLElement.addEventListener(
-            'seeked',
-            () => {console.log('SEEKED')}
-        )
-        this.HTMLElement.addEventListener(
-            'suspend',
-            () => {console.log('SUSPEND')}
-        )
-        this.HTMLElement.addEventListener(
-            'stalled',
-            () => {console.log('STALLED')}
-        )
-        this.HTMLElement.addEventListener(
-            'seeking',
-            e => {console.log(e)}
+            () => this.checkFetchingNecessary()
         )
 
         // Segment Fetcher
@@ -118,18 +104,26 @@ class BufferManager {
         return index / setting.segmentPerSecond;
     }
 
+    private initialBufferCache() {
+        // Fill cameraBufferCache with camera count
+        [...Array(setting.cameraCount)].forEach((_, cameraIndex) => {
+            this.cameraBufferCache[cameraIndex + 1] = [];
+        });
+        this.cameraBufferCache['audio'] = [];
+    }
+
     private processTask() {
         console.debug('Process Task')
         // No task, back to standby
         if (this.taskQueue.length === 0) {
             console.debug('Standby')
-            this.isBusy = false;
+            this.isBusyProcessingTask = false;
 
-            if (!this.isCompleted) this.checkFetchingNecessary();
+            if (!this.isCachingCompleted) this.checkFetchingNecessary();
             return;
         }
 
-        if (!this.isBusy) this.isBusy = true;
+        if (!this.isBusyProcessingTask) this.isBusyProcessingTask = true;
 
         // Deal with task
         let task = this.taskQueue.shift()!;
@@ -183,8 +177,9 @@ class BufferManager {
                     [changeMeta.cameraIndex]
                     [changeMeta.segmentIndex];
                 this.videoBuffer.appendBuffer(buffer!);
-                this.HTMLElement.currentTime =
-                    BufferManager.getTimeBySegmentIndex(changeMeta.segmentIndex - 1);
+                this.player.setCurrentTime(
+                    BufferManager.getTimeBySegmentIndex(changeMeta.segmentIndex)  // Must minus one if segment 0.1
+                );
                 return;
             // Purge
             case BufferTaskType.PURGE:
@@ -231,14 +226,28 @@ class BufferManager {
                 }
 
                 // Resume playback
-                this.HTMLElement.currentTime =
-                    BufferManager.getTimeBySegmentIndex(freezeMeta.segmentIndex - 1);
+                this.player.setCurrentTime(
+                    BufferManager.getTimeBySegmentIndex(freezeMeta.segmentIndex)  // Must minus one if segment 0.1
+                );
                 if (!freezeMeta.isPaused) {
-                    this.HTMLElement.play().catch(
-                        reason => console.error(reason)
-                    )
+                    this.player.play()
                 }
+                this.player.unMute();
 
+                this.processTask();
+                return;
+            // Reset
+            case BufferTaskType.RESET:
+                console.debug('BufferTask[Reset]');
+                this.taskQueue = [];
+                this.initialBufferCache();
+                const newTime: number = task.payload!;
+                const newIndex = BufferManager.getSegmentIndexByTime(newTime);
+                this.segmentFetcher.currentIndex = Math.max(newIndex - 1, 0);  // Must minus one or it will hang
+                this.processTask();
+                this.purgeTriggerTime = setting.cachePurgeInterval + setting.purgePreservedLength + newTime;
+                this.isAutoplayAfterPrecaching = true;
+                this.player.setCurrentTime(newTime + 1);  // Must plus one or it will hang
                 this.processTask();
                 return;
             default:
@@ -252,28 +261,26 @@ class BufferManager {
             payload: payload
         })
         // Start update if standby
-        if (!this.isBusy) this.processTask();
+        if (!this.isBusyProcessingTask) this.processTask();
     }
 
     private checkFetchingNecessary() {
+        if (this.isCachingCompleted) return;
+
         console.debug('Check fetching necessary')
         // Test file finish and callback once
-        if (this.segmentFetcher.currentIndex >= setting.endSegment && !this.isCompleted) {
+        if (this.segmentFetcher.currentIndex >= setting.endSegment && !this.isCachingCompleted) {
             if (this.videoBuffer.updating) return;
             this.eventCallbacks[BufferEvent.COMPLETE].forEach(callbackFunc => {
                 callbackFunc();
             })
             console.debug('Complete test, not fetch.');
-            this.HTMLElement.removeEventListener(
-                'timeupdate',
-                this.updateCallback
-            )
-            this.isCompleted = true;
+            this.isCachingCompleted = true;
             return;
         }
 
         // Purge played buffer for memory optimization
-        if (this.HTMLElement.currentTime > this.purgeTriggerTime) {
+        if (this.player.getCurrentTime() > this.purgeTriggerTime) {
             this.addTask(
                 BufferTaskType.PURGE,
                 this.purgeTriggerTime
@@ -282,14 +289,14 @@ class BufferManager {
         }
 
         // Check busy
-        if (this.isBusy || this.segmentFetcher.isFetching) {
+        if (this.isBusyProcessingTask || this.segmentFetcher.isFetching) {
             console.debug('Is busy, no fetch.');
             return;
         }
 
         // Fetch if not enough buffered
         const cacheLength =
-            BufferManager.getTimeBySegmentIndex(this.segmentFetcher.currentIndex) - this.HTMLElement.currentTime;
+            BufferManager.getTimeBySegmentIndex(this.segmentFetcher.currentIndex) - this.player.getCurrentTime();
         if (cacheLength < setting.bufferPreCacheLength) {
             console.debug('Need more buffer, fetch.');
             this.segmentFetcher.fetchSegment(
@@ -300,11 +307,10 @@ class BufferManager {
                     segmentFetchResult
                 )
             })
-        } else if (this.playAfterCaching) {
-            this.playAfterCaching = false;
-            this.HTMLElement.play().catch(
-                reason => console.error(reason)
-            )
+        } else if (this.isAutoplayAfterPrecaching) {
+            console.debug('Autoplay due to complete caching')
+            this.isAutoplayAfterPrecaching = false;
+            this.player.play();
         }
 
         console.debug('End of checking');
@@ -321,6 +327,13 @@ class BufferManager {
         this.addTask(
             BufferTaskType.RESUME,
             freezeMetaPayload
+        )
+    }
+
+    resetOnTime(time: number) {
+        this.addTask(
+            BufferTaskType.RESET,
+            time
         )
     }
 
@@ -342,11 +355,12 @@ class BufferManager {
         // Freeze Meta | Start change camera
         if (this.freezeMeta === undefined) {
             // Mark player paused state
-            const isPlayerPaused = this.HTMLElement.paused;
-            if (isPlayerPaused) this.HTMLElement.pause();
+            const isPlayerPaused = this.player.isPaused();
+            if (isPlayerPaused) this.player.pause();
+            this.player.mute();
 
             // Set freeze meta
-            const currentTime = this.HTMLElement.currentTime;
+            const currentTime = this.player.getCurrentTime();
             const playSegmentIndex = BufferManager.getSegmentIndexByTime(currentTime);
             this.freezeMeta = {
                 time: currentTime,
