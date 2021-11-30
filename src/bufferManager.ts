@@ -42,6 +42,7 @@ class BufferManager {
     private releaseFreezeMetaTimer?: ReturnType<typeof setTimeout>;
     private updateCallback: () => void;
     private purgeTriggerTime: number;
+    private playAfterCaching: boolean;
 
     constructor(videoBuffer: SourceBuffer, audioBuffer: SourceBuffer, HTMLElement: HTMLMediaElement) {
         console.info('Initialize BufferManager')
@@ -58,6 +59,7 @@ class BufferManager {
         this.releaseFreezeMetaTimer = undefined;
         this.updateCallback = () => this.checkFetchingNecessary();
         this.purgeTriggerTime = setting.cachePurgeInterval + setting.purgePreservedLength;
+        this.playAfterCaching = true;
 
         // Fill cameraBufferCache with camera count
         [...Array(setting.cameraCount)].forEach((_, cameraIndex) => {
@@ -282,6 +284,11 @@ class BufferManager {
                     segmentFetchResult
                 )
             })
+        } else if (this.playAfterCaching) {
+            this.playAfterCaching = false;
+            this.HTMLElement.play().catch(
+                reason => console.error(reason)
+            )
         }
 
         console.debug('End of checking');
