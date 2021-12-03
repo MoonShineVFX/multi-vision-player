@@ -57,10 +57,10 @@ class Controller {
         document.addEventListener('keydown', (event) => {
             switch (event.key) {
                 case 'a':
-                    this.player.requestChangeCamera(setting.changeDirection);
+                    this.player.requestChangeCamera(-setting.changeDirection);
                     break;
                 case 'd':
-                    this.player.requestChangeCamera(-setting.changeDirection);
+                    this.player.requestChangeCamera(setting.changeDirection);
                     break;
                 default:
                     break;
