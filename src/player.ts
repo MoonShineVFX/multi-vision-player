@@ -1,11 +1,13 @@
 import { BufferManager, BufferEvent } from "./bufferManager";
+import Controller from "./controller";
 import setting from "./setting";
 
 
 class MultiVisionPlayer {
     private HTMLElement: HTMLMediaElement;
     private mediaSource?: MediaSource;
-    private bufferManager?: BufferManager;
+    public bufferManager?: BufferManager;
+    private controller?: Controller;
 
     private changeCameraStepsQueue: number[];
     private muteVolume: number;
@@ -19,6 +21,7 @@ class MultiVisionPlayer {
         this.HTMLElement = <HTMLMediaElement>document.getElementById(setting.playerHTMLElementID)!;
         this.mediaSource = undefined;
         this.bufferManager = undefined;
+        this.controller = undefined;
         this.muteVolume = 1.0;
         this.changeCameraStepsQueue = [];
         this.isCameraChanging = false;
@@ -38,6 +41,7 @@ class MultiVisionPlayer {
                     audioBuffer,
                     this
                 )
+                this.controller = new Controller(this);
                 this.HTMLElement.addEventListener('seeking', () => {
                     if (this.isManualSetTime) {
                         this.isManualSetTime = false;

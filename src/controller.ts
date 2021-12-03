@@ -1,22 +1,28 @@
 import setting from "./setting";
+import MultiVisionPlayer from "./player";
+import {BufferEvent} from "./bufferManager";
 
 
 class Controller {
     private isTouchable: boolean;
+    private player: MultiVisionPlayer;
     private HTMLElement: HTMLDivElement;
+    private cameraElements: HTMLSpanElement[];
     private moveX: number;
     private isPressed: boolean;
     private hasMoved: boolean;
     private moveThreshold: number;
     private initial: boolean;
     private previousTouchX?: number;
-    private changeCamera: (step: number) => void;
+    private lastSelectCamera?: number;
 
 
-    constructor(changeCamera: (step: number) => void) {
+    constructor(player: MultiVisionPlayer) {
         this.isTouchable = navigator.maxTouchPoints > 0;
         this.HTMLElement = <HTMLDivElement>document.getElementById(setting.controllerHTMLElementID);
-        this.changeCamera = changeCamera;
+        this.cameraElements = [];
+        this.player = player;
+        this.lastSelectCamera = 1;
         
         this.moveX = 0
         this.isPressed = false;
@@ -25,18 +31,36 @@ class Controller {
         this.initial = true;
         this.previousTouchX = undefined;
 
-        this.subscribe();
+        this.initialCameraElements();
+        this.initialControls();
     }
 
-    subscribe() {
+    private initialCameraElements() {
+        for (let i = 0; i < setting.cameraCount; i++) {
+            const spanElement = document.createElement('span');
+            spanElement.className = i === 0 ? setting.cameraDotStyleSelect : setting.cameraDotStyleDefault;
+            this.HTMLElement.appendChild(spanElement);
+            this.cameraElements.push(spanElement);
+        }
+        this.player.bufferManager!.on(BufferEvent.CHANGE_CAMERA, () => {
+            if (this.lastSelectCamera) {
+                this.cameraElements[this.lastSelectCamera - 1].className = setting.cameraDotStyleDefault;
+            }
+            const currentCameraIndex = this.player.bufferManager!.currentCameraIndex;
+            this.cameraElements[currentCameraIndex - 1].className = setting.cameraDotStyleSelect;
+            this.lastSelectCamera = currentCameraIndex;
+        })
+    }
+
+    private initialControls() {
         // ui control
         document.addEventListener('keydown', (event) => {
             switch (event.key) {
                 case 'a':
-                    this.changeCamera(-1);
+                    this.player.requestChangeCamera(setting.changeDirection);
                     break;
                 case 'd':
-                    this.changeCamera(1);
+                    this.player.requestChangeCamera(-setting.changeDirection);
                     break;
                 default:
                     break;
@@ -74,7 +98,7 @@ class Controller {
             this.previousTouchX = touchEvent.touches[0].pageX;
         }
 
-        this.moveThreshold = this.HTMLElement.offsetWidth / (setting.cameraCount * 1.5);
+        this.moveThreshold = this.HTMLElement.offsetWidth / (setting.cameraCount * setting.slideSensitive);
     }
 
     mouseMove(event: Event) {
@@ -99,7 +123,7 @@ class Controller {
                     Math.abs(this.moveX) / this.moveThreshold
                 ) * Math.sign(this.moveX);
                 this.moveX -= steps * this.moveThreshold;
-                this.changeCamera(steps);
+                this.player.requestChangeCamera(steps * setting.changeDirection);
                 this.hasMoved = true;
             }
         }

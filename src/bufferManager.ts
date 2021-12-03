@@ -17,8 +17,9 @@ interface BufferTask {
     payload: any | undefined
 }
 
-const BufferEvent: {[key: string]: string} = {
-    COMPLETE: 'complete'
+enum BufferEvent {
+    CHANGE_CAMERA,
+    COMPLETE
 }
 
 interface FreezeMeta {
@@ -43,7 +44,7 @@ class BufferManager {
     private freezeMeta?: FreezeMeta;
     private releaseFreezeMetaTimer?: ReturnType<typeof setTimeout>;
 
-    private currentCameraIndex: number;
+    public currentCameraIndex: number;
     private purgeTriggerTime: number;
 
     private isBusyProcessingTask: boolean;
@@ -96,12 +97,12 @@ class BufferManager {
     }
 
     private static getSegmentIndexByTime(time: number) {
-        return Math.max(Math.floor(time * setting.segmentPerSecond), 0);
+        return Math.max(Math.floor(time * setting.segmentsPerSecond), 0);
     }
 
     private static getTimeBySegmentIndex(index: number) {
         if (index < 0) return 0;
-        return index / setting.segmentPerSecond;
+        return index / setting.segmentsPerSecond;
     }
 
     private initialBufferCache() {
@@ -178,7 +179,10 @@ class BufferManager {
                     [changeMeta.segmentIndex];
                 this.videoBuffer.appendBuffer(buffer!);
                 this.player.setCurrentTime(
-                    BufferManager.getTimeBySegmentIndex(changeMeta.segmentIndex)  // Must minus one if segment 0.1
+                    BufferManager.getTimeBySegmentIndex(
+                        // Offset must 1 if segment 0.1
+                        changeMeta.segmentIndex + setting.resumeSegmentIndexOffset
+                    )
                 );
                 return;
             // Purge
@@ -227,7 +231,10 @@ class BufferManager {
 
                 // Resume playback
                 this.player.setCurrentTime(
-                    BufferManager.getTimeBySegmentIndex(freezeMeta.segmentIndex)  // Must minus one if segment 0.1
+                    // Offset must one if segment 0.1
+                    BufferManager.getTimeBySegmentIndex(
+                        freezeMeta.segmentIndex + setting.resumeSegmentIndexOffset
+                    )
                 );
                 if (!freezeMeta.isPaused) {
                     this.player.play()
@@ -350,6 +357,9 @@ class BufferManager {
         // Change camera index
         const currentCameraIndex = this.currentCameraIndex + step;
         this.currentCameraIndex = currentCameraIndex;
+        this.eventCallbacks[BufferEvent.CHANGE_CAMERA].forEach(callbackFunc => {
+            callbackFunc();
+        })
         console.info(`Change camera to ${this.currentCameraIndex}`)
 
         // Freeze Meta | Start change camera
@@ -400,7 +410,7 @@ class BufferManager {
         )
     }
 
-    on(bufferEvent: string, callback: () => void) {
+    on(bufferEvent: BufferEvent, callback: () => void) {
         const callbacks = this.eventCallbacks[bufferEvent];
         if (!callbacks.includes(callback)) {
             this.eventCallbacks[bufferEvent].push(callback);

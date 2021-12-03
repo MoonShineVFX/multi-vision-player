@@ -1,10 +1,7 @@
+import './normalize.css';
 import './index.less';
 import MultiVisionPlayer from "./player";
-import Controller from "./controller";
 // import { testChangCamera } from "./test";
 
 
-const player = new MultiVisionPlayer();
-new Controller(
-    step => player.requestChangeCamera(step)
-);
+new MultiVisionPlayer();

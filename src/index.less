@@ -6,6 +6,22 @@
 
 #the-controller {
   width: 1280px;
-  height: 100px;
-  background-color: blue;
+  height: 60px;
+  background-color: gray;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+
+  .camera {
+    height: 16px;
+    width: 16px;
+    background-color: #bbb;
+    border-radius: 50%;
+    display: block;
+    pointer-events: none;
+
+    &.select {
+      background-color: aqua;
+    }
+  }
 }
