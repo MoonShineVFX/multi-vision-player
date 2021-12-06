@@ -25,7 +25,7 @@ class SegmentFetcher {
         this.isFetching = true;
 
         // Batch fetch for multiple cameras
-        let requestURL = `${setting.streamHost}/stream/${this.currentIndex}`;
+        let requestURL = `${setting.streamHost}/${setting.streamURI}/${this.currentIndex}`;
         const response = await fetch(requestURL);
 
         const buffer = await response.arrayBuffer();

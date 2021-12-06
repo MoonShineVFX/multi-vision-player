@@ -13,7 +13,7 @@ class MultiVisionPlayer {
     private muteVolume: number;
 
     private isCameraChanging: boolean;
-    private isBufferCompledetd: boolean;
+    private isBufferCompleted: boolean;
     private isManualSetTime: boolean;
 
     constructor() {
@@ -25,43 +25,68 @@ class MultiVisionPlayer {
         this.muteVolume = 1.0;
         this.changeCameraStepsQueue = [];
         this.isCameraChanging = false;
-        this.isBufferCompledetd = false;
+        this.isBufferCompleted = false;
         this.isManualSetTime = false;
 
-        this.initializeMediaSource()
-            .then(() => {
-                const videoBuffer = this.mediaSource!.addSourceBuffer(
-                    setting.videoMimeCodec
-                );
-                const audioBuffer = this.mediaSource!.addSourceBuffer(
-                    setting.audioMimeCodec
-                )
-                this.bufferManager = new BufferManager(
-                    videoBuffer,
-                    audioBuffer,
-                    this
-                )
-                this.controller = new Controller(this);
-                this.HTMLElement.addEventListener('seeking', () => {
-                    if (this.isManualSetTime) {
-                        this.isManualSetTime = false;
-                        return;
-                    }
-                    this.bufferManager!.resetOnTime(this.getCurrentTime());
-                })
-                this.bufferManager.on(
-                    BufferEvent.COMPLETE,
-                    () => {
-                        // When buffer completed, close stream
-                        if (this.mediaSource!.readyState === 'open') {
-                            console.info('Complete play!')
-                            this.mediaSource!.endOfStream();
-                            this.isBufferCompledetd = true;
-                        }
-                    }
-                )
-                this.mediaSource!.duration = setting.sourceDuration;
+        this.fetchMetadata(
+        ).then(() => this.initializeMediaSource()
+        ).then(() => {
+            const videoBuffer = this.mediaSource!.addSourceBuffer(
+                setting.videoMimeCodec
+            );
+            const audioBuffer = this.mediaSource!.addSourceBuffer(
+                setting.audioMimeCodec
+            )
+            this.bufferManager = new BufferManager(
+                videoBuffer,
+                audioBuffer,
+                this
+            )
+            this.controller = new Controller(this);
+            this.HTMLElement.addEventListener('seeking', () => {
+                if (this.isManualSetTime) {
+                    this.isManualSetTime = false;
+                    return;
+                }
+                this.bufferManager!.resetOnTime(this.getCurrentTime());
             })
+            this.bufferManager.on(
+                BufferEvent.COMPLETE,
+                () => {
+                    // When buffer completed, close stream
+                    if (this.mediaSource!.readyState === 'open') {
+                        console.info('Complete play!')
+                        this.mediaSource!.endOfStream();
+                        this.isBufferCompleted = true;
+                    }
+                }
+            )
+            this.mediaSource!.duration = setting.sourceDuration;
+        }).catch(message => console.error(message))
+    }
+
+    private async fetchMetadata(): Promise<any> {
+        const search = location.search.substring(1);
+        let isResolve = false;
+        let errorMessage = '';
+        if (!search) {
+            errorMessage = 'No parameter found!';
+        } else {
+            const parameter = JSON.parse('{"' + decodeURI(search).replace(/"/g, '\\"').replace(/&/g, '","').replace(/=/g,'":"') + '"}');
+            const dataName: string = parameter['data'];
+            const resp = await fetch(`/${dataName}/metadata.json`);
+            const metadata = await resp.json();
+            setting.applyMetadata(dataName, metadata);
+            isResolve = true;
+        }
+
+        return new Promise<any>(resolve => {
+            if (isResolve) {
+                resolve(errorMessage);
+            } else {
+                throw new Error(errorMessage);
+            }
+        });
     }
 
     private initializeMediaSource(): Promise<Event> {
@@ -121,7 +146,7 @@ class MultiVisionPlayer {
         if (this.changeCameraStepsQueue.length === 0) {
             this.isCameraChanging = false;
             console.debug('Finish change camera')
-            if (this.isBufferCompledetd) {
+            if (this.isBufferCompleted) {
                 try {
                     this.mediaSource!.endOfStream();
                 } catch (e) {

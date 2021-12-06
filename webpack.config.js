@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require("webpack");
 
 
 module.exports = {
@@ -28,6 +29,9 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: './public/index.html',
       filename: 'index.html'
+    }),
+    new webpack.EnvironmentPlugin({
+      'STREAM_HOST': ''
     })
   ],
   module: {

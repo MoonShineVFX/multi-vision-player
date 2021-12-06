@@ -1,4 +1,5 @@
-interface GlobalSetting {
+class GlobalSetting {
+    private static instance: GlobalSetting;
     videoMimeCodec: string;
     audioMimeCodec: string;
     playerHTMLElementID: string;
@@ -12,38 +13,60 @@ interface GlobalSetting {
     minimumCameraChangeInterval: number;
     endSegment: number;
     streamHost: string;
+    streamURI: string;
     sourceDuration: number;
     cachePurgeInterval: number;
     purgePreservedLength: number;
     resumeSegmentIndexOffset: number;
     changeDirection: number;
     slideSensitive: number;
+
+    constructor() {
+        // Define
+        this.playerHTMLElementID = 'the-player'
+        this.controllerHTMLElementID = 'the-controller'
+        this.cameraDotStyleDefault = 'camera'
+        this.cameraDotStyleSelect = 'camera select'
+        // Metadata
+        this.streamHost = process.env.STREAM_HOST || ''
+        this.streamURI = 'data'
+        this.videoMimeCodec = 'video/mp4; codecs="avc1.7A0028"'
+        this.audioMimeCodec = 'audio/mp4; codecs="mp4a.40.2"'
+        this.cameraCount = -1  // 16
+        this.segmentsPerSecond = -1  // 1
+        this.endSegment = -1  // 565
+        this.sourceDuration = -1  // 565
+        this.resumeSegmentIndexOffset = 0  // -1 if 0.1
+        // Cache
+        this.bufferPreCacheLength = 5
+        this.cachePurgeInterval = 5
+        this.purgePreservedLength = 2
+        // Control camera changing
+        this.freezeTimeDelay = 0.07
+        this.minimumCameraChangeInterval = 0.03
+        this.changeDirection = 1
+        this.slideSensitive = 1.5
+    }
+
+    static getInstance(): GlobalSetting {
+        if (!GlobalSetting.instance) {
+            GlobalSetting.instance = new GlobalSetting();
+        }
+        return GlobalSetting.instance;
+    }
+
+    applyMetadata = (dataName: string, metadata: Object) => {
+        console.info('Apply metadata: ' + dataName);
+        console.info(metadata);
+        this.streamURI = dataName;
+        Object.keys(metadata).forEach(key => {
+            (this as any)[key] = (metadata as any)[key];
+        });
+    }
 }
 
-const setting: GlobalSetting = {
-    // define
-    streamHost: 'http://127.0.0.1:8081',
-    videoMimeCodec: 'video/mp4; codecs="avc1.7A0028"',
-    audioMimeCodec: 'audio/mp4; codecs="mp4a.40.2"',
-    playerHTMLElementID: 'the-player',
-    controllerHTMLElementID: 'the-controller',
-    cameraDotStyleDefault: 'camera',
-    cameraDotStyleSelect: 'camera select',
-    // basic
-    cameraCount: 16,
-    segmentsPerSecond: 10,
-    endSegment: 5651,
-    sourceDuration: 565,
-    // cache
-    bufferPreCacheLength: 5,
-    cachePurgeInterval: 5,
-    purgePreservedLength: 2,
-    // control camera changing
-    freezeTimeDelay: 0.07,
-    minimumCameraChangeInterval: 0.03,
-    resumeSegmentIndexOffset: -1,  // -1 if 0.1
-    changeDirection: 1,
-    slideSensitive: 1.5
-}
+
+const setting = GlobalSetting.getInstance();
+
 
 export default setting;
