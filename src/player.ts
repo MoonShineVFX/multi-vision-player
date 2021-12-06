@@ -74,7 +74,7 @@ class MultiVisionPlayer {
         } else {
             const parameter = JSON.parse('{"' + decodeURI(search).replace(/"/g, '\\"').replace(/&/g, '","').replace(/=/g,'":"') + '"}');
             const dataName: string = parameter['data'];
-            const resp = await fetch(`/${dataName}/metadata.json`);
+            const resp = await fetch(`${setting.streamHost}/${dataName}/metadata.json`);
             const metadata = await resp.json();
             setting.applyMetadata(dataName, metadata);
             isResolve = true;

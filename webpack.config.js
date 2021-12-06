@@ -23,7 +23,7 @@ module.exports = {
   },
   output: {
     path: path.resolve(__dirname, 'build'),
-    filename: 'js/[name].[hash].js'
+    filename: 'js/[name].[fullhash].js'
   },
   plugins: [
     new HtmlWebpackPlugin({
