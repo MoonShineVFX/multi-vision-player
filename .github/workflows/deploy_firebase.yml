@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CI: false
-      STREAM_HOST: secrets.STREAM_HOST
+      STREAM_HOST: ${{ secrets.STREAM_HOST }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
