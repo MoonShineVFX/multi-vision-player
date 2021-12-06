@@ -4,7 +4,8 @@ import setting from "./setting";
 
 
 class MultiVisionPlayer {
-    private HTMLElement: HTMLMediaElement;
+    private playerElement: HTMLMediaElement;
+    private messageElement: HTMLDivElement;
     private mediaSource?: MediaSource;
     public bufferManager?: BufferManager;
     private controller?: Controller;
@@ -18,7 +19,8 @@ class MultiVisionPlayer {
 
     constructor() {
         console.info('Initialize MultiVisionPlayer')
-        this.HTMLElement = <HTMLMediaElement>document.getElementById(setting.playerHTMLElementID)!;
+        this.playerElement = <HTMLMediaElement>document.getElementById(setting.playerHTMLElementID)!;
+        this.messageElement = <HTMLDivElement>document.getElementById(setting.messageElementID)!;
         this.mediaSource = undefined;
         this.bufferManager = undefined;
         this.controller = undefined;
@@ -42,8 +44,9 @@ class MultiVisionPlayer {
                 audioBuffer,
                 this
             )
+            this.playerElement.style.display = 'block';
             this.controller = new Controller(this);
-            this.HTMLElement.addEventListener('seeking', () => {
+            this.playerElement.addEventListener('seeking', () => {
                 if (this.isManualSetTime) {
                     this.isManualSetTime = false;
                     return;
@@ -62,20 +65,23 @@ class MultiVisionPlayer {
                 }
             )
             this.mediaSource!.duration = setting.sourceDuration;
-        }).catch(message => console.error(message))
+        }).catch(message => this.showError(message))
     }
 
     private async fetchMetadata(): Promise<any> {
-        const search = location.search.substring(1);
+        const dataName = location.pathname.substr(1);
         let isResolve = false;
         let errorMessage = '';
-        if (!search) {
-            errorMessage = 'No parameter found!';
+        if (!dataName) {
+            errorMessage = 'Please input data name!';
         } else {
-            const parameter = JSON.parse('{"' + decodeURI(search).replace(/"/g, '\\"').replace(/&/g, '","').replace(/=/g,'":"') + '"}');
-            const dataName: string = parameter['data'];
             const resp = await fetch(`${setting.streamHost}/${dataName}/metadata.json`);
-            const metadata = await resp.json();
+            let metadata: Object;
+            try {
+                metadata = await resp.json();
+            } catch {
+                throw new Error(`No data name "${dataName}" found!`)
+            }
             setting.applyMetadata(dataName, metadata);
             isResolve = true;
         }
@@ -93,44 +99,51 @@ class MultiVisionPlayer {
         return new Promise<Event>(resolve => {
             this.mediaSource = new MediaSource();
             this.mediaSource.addEventListener('sourceopen', resolve);
-            this.HTMLElement.src = URL.createObjectURL(this.mediaSource);
+            this.playerElement.src = URL.createObjectURL(this.mediaSource);
         });
     }
 
+    private showError(message: string) {
+        console.warn(message);
+        this.playerElement.style.display = 'none';
+        this.messageElement.innerHTML = message;
+        this.messageElement.style.display = 'block';
+    }
+
     getCurrentTime(): number {
-        return this.HTMLElement.currentTime;
+        return this.playerElement.currentTime;
     }
 
     setCurrentTime(time: number) {
         this.isManualSetTime = true;
-        this.HTMLElement.currentTime = time;
+        this.playerElement.currentTime = time;
     }
 
     addEventListener(type: string, listener: () => any) {
-        this.HTMLElement.addEventListener(type, listener);
+        this.playerElement.addEventListener(type, listener);
     }
 
     play() {
-        this.HTMLElement.play().catch(
+        this.playerElement.play().catch(
             reason => console.error(reason)
         );
     }
 
     pause() {
-        this.HTMLElement.pause();
+        this.playerElement.pause();
     }
 
     isPaused() {
-        return this.HTMLElement.paused;
+        return this.playerElement.paused;
     }
 
     mute() {
-        this.muteVolume = this.HTMLElement.volume;
-        this.HTMLElement.volume = 0;
+        this.muteVolume = this.playerElement.volume;
+        this.playerElement.volume = 0;
     }
 
     unMute() {
-        this.HTMLElement.volume = this.muteVolume;
+        this.playerElement.volume = this.muteVolume;
     }
 
     requestChangeCamera(step: number) {

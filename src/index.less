@@ -2,30 +2,51 @@ html {
   background-color: #232323;
 }
 
-#the-player {
-  width: 1280px;
-  height: 720px;
-  display: block;
+#message {
+  color: #bbb;
+  background-color: #a42424;
+  display: none;
+  text-align: center;
+  height: 60px;
+  line-height: 60px;
 }
 
-#the-controller {
-  width: 1280px;
-  height: 100px;
-  background-color: gray;
+#main {
+  width: 100%;
   display: flex;
-  justify-content: space-around;
+  flex-direction: column;
   align-items: center;
 
-  .camera {
-    height: 16px;
-    width: 16px;
-    background-color: #bbb;
-    border-radius: 50%;
-    display: block;
-    pointer-events: none;
 
-    &.select {
-      background-color: aqua;
+  #the-player {
+    display: none;
+    width: 1280px;
+    height: 720px;
+    border-radius: 16px;
+    margin-top: 16px;
+  }
+
+  #the-controller {
+    display: none;
+    width: 1280px;
+    height: 100px;
+    background-color: gray;
+    justify-content: space-around;
+    align-items: center;
+    border-radius: 16px;
+    margin-top: 16px;
+
+    .camera {
+      height: 16px;
+      width: 16px;
+      background-color: #bbb;
+      border-radius: 50%;
+      display: block;
+      pointer-events: none;
+
+      &.select {
+        background-color: aqua;
+      }
     }
   }
 }

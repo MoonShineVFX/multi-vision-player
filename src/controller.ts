@@ -84,6 +84,8 @@ class Controller {
         this.HTMLElement.addEventListener(interact.move, event => this.mouseMove(event));
         this.HTMLElement.addEventListener(interact.up, event => this.mouseUp(event));
         this.HTMLElement.addEventListener(interact.out, event => this.mouseUp(event));
+
+        this.HTMLElement.style.display = 'flex';
     }
 
     mouseDown(event: Event) {

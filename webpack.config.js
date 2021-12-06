@@ -9,9 +9,12 @@ module.exports = {
   devtool: 'inline-source-map',
   devServer: {
     contentBase: [
-      path.join(__dirname, 'build'),
-      path.join(__dirname, 'data')
+      path.join(__dirname, 'dev_static')
     ],
+    historyApiFallback: {
+      index: '/index.html'
+    },
+    index: 'index.html',
     host: '0.0.0.0',
     port: 8000,
     hot: true,
