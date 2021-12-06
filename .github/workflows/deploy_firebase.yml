@@ -1,0 +1,44 @@
+name: Build and Deploy to Firebase
+on: [push]
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      CI: false
+      STREAM_HOST: secrets.STREAM_HOST
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Yarn install
+        uses: borales/actions-yarn@v2.3.0
+        with:
+          cmd: install
+      - name: Yarn build
+        uses: borales/actions-yarn@v2.3.0
+        with:
+          cmd: build
+      - name: Archive
+        uses: actions/upload-artifact@v2
+        with:
+          name: node-build
+          path: build
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Download builds
+        uses: actions/download-artifact@v2
+        with:
+          name: node-build
+          path: build
+      - name: Deploy to Firebase
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only hosting
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
