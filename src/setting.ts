@@ -21,6 +21,8 @@ class GlobalSetting {
     resumeSegmentIndexOffset: number;
     changeDirection: number;
     slideSensitive: number;
+    liveStreaming: boolean;
+    initialSegmentNumber: number;
 
     constructor() {
         // Define
@@ -31,6 +33,7 @@ class GlobalSetting {
         this.cameraDotStyleSelect = 'camera select'
         // Metadata
         this.streamHost = process.env.STREAM_HOST || ''
+        this.liveStreaming = false
         this.streamURI = 'data'
         this.videoMimeCodec = 'video/mp4; codecs="avc1.7A0028"'
         this.audioMimeCodec = 'audio/mp4; codecs="mp4a.40.2"'
@@ -39,6 +42,7 @@ class GlobalSetting {
         this.endSegment = -1  // 565
         this.sourceDuration = -1  // 565
         this.resumeSegmentIndexOffset = 0  // -1 if 0.1
+        this.initialSegmentNumber = 0
         // Cache
         this.bufferPreCacheLength = 5
         this.cachePurgeInterval = 5

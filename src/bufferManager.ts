@@ -67,6 +67,9 @@ class BufferManager {
         this.purgeTriggerTime = setting.cachePurgeInterval + setting.purgePreservedLength;
         this.isAutoplayAfterPrecaching = true;
 
+        // Change purgeTriggerTime
+        if (setting.liveStreaming) this.purgeTriggerTime += this.player.getCurrentTime();
+
         // Create buffer cache
         this.initialBufferCache();
 
@@ -93,14 +96,27 @@ class BufferManager {
         );
 
         // Auto run first time
-        this.processTask();
+        if (!setting.liveStreaming) {
+            this.processTask();
+        }else{
+            this.segmentFetcher.fetchSegment(
+                this.currentCameraIndex
+            ).then(segmentFetchResult => {
+                this.segmentFetcher.currentIndex = setting.initialSegmentNumber;
+                this.addTask(
+                    BufferTaskType.APPEND,
+                    segmentFetchResult
+                );
+                this.processTask();
+            })
+        }
     }
 
-    private static getSegmentIndexByTime(time: number) {
+    static getSegmentIndexByTime(time: number) {
         return Math.max(Math.floor(time * setting.segmentsPerSecond), 0);
     }
 
-    private static getTimeBySegmentIndex(index: number) {
+    static getTimeBySegmentIndex(index: number) {
         if (index < 0) return 0;
         return index / setting.segmentsPerSecond;
     }
@@ -251,7 +267,7 @@ class BufferManager {
                 const newTime: number = task.payload!;
                 const newIndex = BufferManager.getSegmentIndexByTime(newTime);
                 this.segmentFetcher.currentIndex = Math.max(newIndex - 1, 0);  // Must minus one or it will hang
-                this.processTask();
+                // this.processTask();
                 this.purgeTriggerTime = setting.cachePurgeInterval + setting.purgePreservedLength + newTime;
                 this.isAutoplayAfterPrecaching = true;
                 this.player.setCurrentTime(newTime + 1);  // Must plus one or it will hang
@@ -276,7 +292,7 @@ class BufferManager {
 
         console.debug('Check fetching necessary')
         // Test file finish and callback once
-        if (this.segmentFetcher.currentIndex >= setting.endSegment && !this.isCachingCompleted) {
+        if (!setting.liveStreaming && this.segmentFetcher.currentIndex >= setting.endSegment && !this.isCachingCompleted) {
             if (this.videoBuffer.updating) return;
             this.eventCallbacks[BufferEvent.COMPLETE].forEach(callbackFunc => {
                 callbackFunc();

@@ -33,6 +33,11 @@ class MultiVisionPlayer {
         this.fetchMetadata(
         ).then(() => this.initializeMediaSource()
         ).then(() => {
+            this.mediaSource!.duration = setting.sourceDuration;
+            if (setting.liveStreaming) {
+                this.setCurrentTime(BufferManager.getTimeBySegmentIndex(setting.initialSegmentNumber));
+            }
+
             const videoBuffer = this.mediaSource!.addSourceBuffer(
                 setting.videoMimeCodec
             );
@@ -52,7 +57,7 @@ class MultiVisionPlayer {
                     return;
                 }
                 this.bufferManager!.resetOnTime(this.getCurrentTime());
-            })
+            });
             this.bufferManager.on(
                 BufferEvent.COMPLETE,
                 () => {
@@ -63,8 +68,7 @@ class MultiVisionPlayer {
                         this.isBufferCompleted = true;
                     }
                 }
-            )
-            this.mediaSource!.duration = setting.sourceDuration;
+            );
         }).catch(message => this.showError(message))
     }
 
