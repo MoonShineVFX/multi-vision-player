@@ -76,6 +76,12 @@ class MultiVisionPlayer {
         const dataName = location.pathname.substr(1);
         let isResolve = false;
         let errorMessage = '';
+
+        // Auto streamHost when in stream mode
+        if (setting.streamHost === '') {
+            setting.streamHost = `http://${location.hostname}:8081`;
+        }
+
         if (!dataName) {
             errorMessage = 'Please input data name!';
         } else {
