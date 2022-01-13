@@ -41,9 +41,12 @@ class MultiVisionPlayer {
             const videoBuffer = this.mediaSource!.addSourceBuffer(
                 setting.videoMimeCodec
             );
-            const audioBuffer = this.mediaSource!.addSourceBuffer(
-                setting.audioMimeCodec
-            )
+            let audioBuffer = null;
+            if (setting.audioMimeCodec !== '') {
+                audioBuffer = this.mediaSource!.addSourceBuffer(
+                    setting.audioMimeCodec
+                )
+            }
             this.bufferManager = new BufferManager(
                 videoBuffer,
                 audioBuffer,

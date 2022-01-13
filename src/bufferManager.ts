@@ -32,7 +32,7 @@ interface FreezeMeta {
 // Main
 class BufferManager {
     private videoBuffer: SourceBuffer;
-    private audioBuffer: SourceBuffer;
+    private audioBuffer: SourceBuffer | null;
     private player: MultiVisionPlayer;
 
     private cameraBufferCache: {[key: string]: (ArrayBuffer | null)[]};
@@ -51,7 +51,7 @@ class BufferManager {
     private isCachingCompleted: boolean;
     private isAutoplayAfterPrecaching: boolean;
 
-    constructor(videoBuffer: SourceBuffer, audioBuffer: SourceBuffer, player: MultiVisionPlayer) {
+    constructor(videoBuffer: SourceBuffer, audioBuffer: SourceBuffer | null, player: MultiVisionPlayer) {
         console.info('Initialize BufferManager')
         this.videoBuffer = videoBuffer;
         this.audioBuffer = audioBuffer;
@@ -92,7 +92,8 @@ class BufferManager {
         this.segmentFetcher = new SegmentFetcher(
             (cameraIndex, segmentIndex, arrayBuffer) => {
                 this.cameraBufferCache[cameraIndex][segmentIndex] = arrayBuffer;
-            }
+            },
+            this.audioBuffer !== null
         );
 
         // Auto run first time
@@ -172,7 +173,7 @@ class BufferManager {
                     this.videoBuffer.appendBuffer(buffer!);
 
                     // Add audio
-                    if (this.freezeMeta === undefined) {
+                    if (this.freezeMeta === undefined && this.audioBuffer) {
                         const audioBuffer = this.cameraBufferCache['audio'][segmentCacheMeta.segmentIndex];
                         this.audioBuffer.appendBuffer(audioBuffer!);
                     }
@@ -210,7 +211,9 @@ class BufferManager {
 
                 // Remove from SourceBuffer
                 this.videoBuffer.remove(removeStartTime, removeEndTime);
-                this.audioBuffer.remove(removeStartTime, removeEndTime);
+                if (this.audioBuffer) {
+                    this.audioBuffer.remove(removeStartTime, removeEndTime);
+                }
 
                 // Convert purge range to index
                 const removeStartSegmentIndex = BufferManager.getSegmentIndexByTime(removeStartTime);

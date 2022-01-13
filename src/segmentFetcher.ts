@@ -11,12 +11,14 @@ type FetchCallback = (cameraIndex: number | string, segmentIndex: number, arrayB
 // Main
 class SegmentFetcher {
     private fetchCallback: FetchCallback;
+    private hasAudio: boolean;
     currentIndex: number;
     isFetching: boolean;
 
-    constructor(fetchCallback: FetchCallback) {
+    constructor(fetchCallback: FetchCallback, hasAudio: boolean) {
         console.info('Initialize SegmentFetcher')
         this.fetchCallback = fetchCallback;
+        this.hasAudio = hasAudio;
         this.isFetching = false;
         this.currentIndex = 0;
     }
@@ -29,7 +31,7 @@ class SegmentFetcher {
         const response = await fetch(requestURL);
 
         const buffer = await response.arrayBuffer();
-        let cursor = 4 * (setting.cameraCount + 1);
+        let cursor = 4 * (setting.cameraCount + (this.hasAudio ? 1 : 0));
         const size_arr = new Uint32Array(buffer.slice(0, cursor));
 
         // Apply cache to camera
@@ -44,11 +46,13 @@ class SegmentFetcher {
         }
 
         // Apply cache to audio
-        this.fetchCallback(
-            'audio',
-            this.currentIndex,
-            buffer.slice(cursor)
-        )
+        if (this.hasAudio) {
+            this.fetchCallback(
+                'audio',
+                this.currentIndex,
+                buffer.slice(cursor)
+            )
+        }
 
         console.debug('Segment fetch finished');
         this.isFetching = false;
