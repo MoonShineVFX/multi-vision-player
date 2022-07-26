@@ -12,8 +12,6 @@ html {
 }
 
 #main {
-  max-width: 100%;
-  max-height: 100%;
   width: 100vw;
   height: 100vh;
   display: flex;
@@ -24,12 +22,18 @@ html {
     padding: 8px;
   }
 
+  #player-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
   #the-player {
     display: none;
-    max-width: 100%;
-    border-radius: 16px;
-    flex-grow: 1;
-    object-fit: cover;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    position: absolute;
   }
 
   #the-controller {
