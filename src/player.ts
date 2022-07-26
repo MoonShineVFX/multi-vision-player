@@ -6,6 +6,7 @@ import setting from "./setting";
 class MultiVisionPlayer {
     private playerElement: HTMLMediaElement;
     private messageElement: HTMLDivElement;
+    private fullScreenElement: HTMLDivElement;
     private mediaSource?: MediaSource;
     public bufferManager?: BufferManager;
     private controller?: Controller;
@@ -21,6 +22,7 @@ class MultiVisionPlayer {
         console.info('Initialize MultiVisionPlayer')
         this.playerElement = <HTMLMediaElement>document.getElementById(setting.playerHTMLElementID)!;
         this.messageElement = <HTMLDivElement>document.getElementById(setting.messageElementID)!;
+        this.fullScreenElement = <HTMLDivElement>document.getElementById(setting.fullScreenID)!;
         this.mediaSource = undefined;
         this.bufferManager = undefined;
         this.controller = undefined;
@@ -29,6 +31,17 @@ class MultiVisionPlayer {
         this.isCameraChanging = false;
         this.isBufferCompleted = false;
         this.isManualSetTime = false;
+
+        this.fullScreenElement.addEventListener('pointerdown', () => {
+            const mainElement = <HTMLDivElement>document.getElementById('main');
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+                this.fullScreenElement.style.opacity = '0.8';
+            } else {
+                mainElement.requestFullscreen();
+                this.fullScreenElement.style.opacity = '0.3';
+            }
+        })
 
         this.fetchMetadata(
         ).then(() => this.initializeMediaSource()
@@ -55,11 +68,15 @@ class MultiVisionPlayer {
             this.playerElement.style.display = 'block';
             this.controller = new Controller(this);
             this.playerElement.addEventListener('seeking', () => {
+                this.playerElement.controls = false;
                 if (this.isManualSetTime) {
                     this.isManualSetTime = false;
                     return;
                 }
                 this.bufferManager!.resetOnTime(this.getCurrentTime());
+            });
+            this.playerElement.addEventListener('seeked', () => {
+                this.playerElement.controls = true;
             });
             this.bufferManager.on(
                 BufferEvent.COMPLETE,

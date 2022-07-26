@@ -2,8 +2,10 @@ class GlobalSetting {
     private static instance: GlobalSetting;
     videoMimeCodec: string;
     audioMimeCodec: string;
+    mainElementID: string;
     messageElementID: string;
     playerHTMLElementID: string;
+    fullScreenID: string;
     controllerHTMLElementID: string;
     cameraDotStyleDefault: string;
     cameraDotStyleSelect: string;
@@ -26,8 +28,10 @@ class GlobalSetting {
 
     constructor() {
         // Define
+        this.mainElementID = 'main'
         this.messageElementID = 'message'
         this.playerHTMLElementID = 'the-player'
+        this.fullScreenID = 'full-screen-button'
         this.controllerHTMLElementID = 'the-controller'
         this.cameraDotStyleDefault = 'camera'
         this.cameraDotStyleSelect = 'camera select'
