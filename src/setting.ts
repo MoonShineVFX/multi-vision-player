@@ -1,4 +1,4 @@
-class GlobalSetting {
+export class GlobalSetting {
     private static instance: GlobalSetting;
     videoMimeCodec: string;
     audioMimeCodec: string;
@@ -65,10 +65,10 @@ class GlobalSetting {
         return GlobalSetting.instance;
     }
 
-    applyMetadata = (dataName: string, metadata: Object) => {
+    applyMetadata = (dataName: string | undefined, metadata: Object) => {
         console.info('Apply metadata: ' + dataName);
         console.info(metadata);
-        this.streamURI = dataName;
+        if (dataName) this.streamURI = dataName;
         Object.keys(metadata).forEach(key => {
             (this as any)[key] = (metadata as any)[key];
         });

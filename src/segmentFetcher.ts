@@ -1,7 +1,7 @@
 // Define
 import setting from "./setting";
 
-interface SegmentCacheMeta {
+export interface SegmentCacheMeta {
     cameraIndex: number;
     segmentIndex: number;
 }
@@ -9,7 +9,7 @@ type FetchCallback = (cameraIndex: number | string, segmentIndex: number, arrayB
 
 
 // Main
-class SegmentFetcher {
+export class SegmentFetcher {
     private fetchCallback: FetchCallback;
     private hasAudio: boolean;
     currentIndex: number;
@@ -64,5 +64,3 @@ class SegmentFetcher {
         }
     }
 }
-
-export { SegmentFetcher, SegmentCacheMeta };

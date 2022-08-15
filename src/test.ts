@@ -1,3 +1,5 @@
+import './normalize.css';
+import './index.less';
 import MultiVisionPlayer from "./player";
 
 const testChangCamera = (player: MultiVisionPlayer) => {
@@ -18,4 +20,4 @@ const testChangCamera = (player: MultiVisionPlayer) => {
     }, 8000);
 }
 
-export { testChangCamera };
+const _ = new MultiVisionPlayer();
