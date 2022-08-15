@@ -2,6 +2,7 @@ import './normalize.css';
 import './index.less';
 import MultiVisionPlayer from "./player";
 
+
 const testChangCamera = (player: MultiVisionPlayer) => {
     let count = 1;
     const triggerChangeCamera = (step: number) => {
@@ -19,5 +20,6 @@ const testChangCamera = (player: MultiVisionPlayer) => {
         triggerChangeCamera(-1)
     }, 8000);
 }
+
 
 const _ = new MultiVisionPlayer();

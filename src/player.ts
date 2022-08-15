@@ -21,11 +21,11 @@ class MultiVisionPlayer {
   private isManualSetTime: boolean;
 
   constructor(
-    playerElement: HTMLVideoElement | undefined = undefined,
-    customDataName: string | undefined = undefined,
-    customMetadata: Object | undefined = undefined,
-    disableDefaultControl: boolean = false,
-    onMetadataLoaded: (metadata: GlobalSetting) => void | undefined
+    playerElement?: HTMLVideoElement,
+    customDataName?: string,
+    customMetadata?: Object,
+    disableDefaultControl?: boolean,
+    onMetadataLoaded?: (metadata: GlobalSetting) => void
   ) {
     console.info('Initialize MultiVisionPlayer')
     this.playerElement = playerElement || null;
@@ -109,9 +109,9 @@ class MultiVisionPlayer {
   }
 
   private async fetchMetadata(
-    customDataName: string | undefined = undefined,
-    customMetadata: Object | undefined = undefined,
-    onMetadataLoaded: (metadata: GlobalSetting) => void | undefined
+    customDataName?: string,
+    customMetadata?: Object,
+    onMetadataLoaded?: (metadata: GlobalSetting) => void
   ): Promise<any> {
     const dataName = customDataName || location.pathname.substr(1);
     let isResolve = false;
@@ -137,7 +137,7 @@ class MultiVisionPlayer {
       }
 
       setting.applyMetadata(dataName, metadata);
-      onMetadataLoaded(setting);
+      if (onMetadataLoaded) onMetadataLoaded(setting);
       isResolve = true;
     }
 
