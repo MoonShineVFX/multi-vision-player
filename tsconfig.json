@@ -2,8 +2,14 @@
   "compilerOptions": {
     "sourceMap": true,
     "noImplicitAny": true,
-    "module": "es6",
-    "target": "es2015",
-    "strict": true
-  }
+    "declaration": true,
+    "module": "commonjs",
+    "target": "es5",
+    "strict": true,
+    "outDir": "dist",
+    "moduleResolution": "node",
+    "skipLibCheck": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "**/test.ts"]
 }

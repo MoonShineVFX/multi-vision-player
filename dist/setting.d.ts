@@ -1,0 +1,33 @@
+export declare class GlobalSetting {
+    private static instance;
+    videoMimeCodec: string;
+    audioMimeCodec: string;
+    mainElementID: string;
+    messageElementID: string;
+    playerHTMLElementID: string;
+    fullScreenID: string;
+    controllerHTMLElementID: string;
+    cameraDotStyleDefault: string;
+    cameraDotStyleSelect: string;
+    bufferPreCacheLength: number;
+    cameraCount: number;
+    segmentsPerSecond: number;
+    freezeTimeDelay: number;
+    minimumCameraChangeInterval: number;
+    endSegment: number;
+    streamHost: string;
+    streamURI: string;
+    sourceDuration: number;
+    cachePurgeInterval: number;
+    purgePreservedLength: number;
+    resumeSegmentIndexOffset: number;
+    changeDirection: number;
+    slideSensitive: number;
+    liveStreaming: boolean;
+    initialSegmentNumber: number;
+    constructor();
+    static getInstance(): GlobalSetting;
+    applyMetadata: (dataName: string | undefined, metadata: Object) => void;
+}
+declare const setting: GlobalSetting;
+export default setting;
