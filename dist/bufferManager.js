@@ -1,12 +1,8 @@
 "use strict";
-var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
-    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
-        if (ar || !(i in from)) {
-            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
-            ar[i] = from[i];
-        }
-    }
-    return to.concat(ar || Array.prototype.slice.call(from));
+var __spreadArray = (this && this.__spreadArray) || function (to, from) {
+    for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
+        to[j] = from[i];
+    return to;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BufferEvent = exports.BufferManager = void 0;
@@ -84,7 +80,7 @@ var BufferManager = /** @class */ (function () {
     BufferManager.prototype.initialBufferCache = function () {
         var _this = this;
         // Fill cameraBufferCache with camera count
-        __spreadArray([], Array(setting_1.default.cameraCount), true).forEach(function (_, cameraIndex) {
+        __spreadArray([], Array(setting_1.default.cameraCount)).forEach(function (_, cameraIndex) {
             _this.cameraBufferCache[cameraIndex + 1] = [];
         });
         this.cameraBufferCache['audio'] = [];
@@ -182,7 +178,7 @@ var BufferManager = /** @class */ (function () {
                 var lastIndex = Number(Object.keys(cameraBuffer)[Object.keys(cameraBuffer).length - 1]);
                 // Check replace needed
                 if (lastIndex > freezeMeta.segmentIndex + 1) {
-                    console.debug("Resume cache: ".concat(freezeMeta.segmentIndex, " => ").concat(lastIndex));
+                    console.debug("Resume cache: " + freezeMeta.segmentIndex + " => " + lastIndex);
                     for (var i = freezeMeta.segmentIndex + 2; i < lastIndex + 1; i++) {
                         this.addTask(BufferTaskType.APPEND, {
                             cameraIndex: this.currentCameraIndex,
@@ -297,7 +293,7 @@ var BufferManager = /** @class */ (function () {
         this.eventCallbacks[BufferEvent.CHANGE_CAMERA].forEach(function (callbackFunc) {
             callbackFunc();
         });
-        console.info("Change camera to ".concat(this.currentCameraIndex));
+        console.info("Change camera to " + this.currentCameraIndex);
         // Freeze Meta | Start change camera
         if (this.freezeMeta === undefined) {
             // Mark player paused state

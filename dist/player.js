@@ -40,7 +40,7 @@ var bufferManager_1 = require("./bufferManager");
 var controller_1 = require("./controller");
 var setting_1 = require("./setting");
 var MultiVisionPlayer = /** @class */ (function () {
-    function MultiVisionPlayer(playerElement, customDataName, customMetadata, disableDefaultControl, onMetadataLoaded) {
+    function MultiVisionPlayer(playerElement, customDataName, customMetadata, disableDefaultControl, onMetadataLoaded, onError) {
         var _this = this;
         console.info('Initialize MultiVisionPlayer');
         this.playerElement = playerElement || null;
@@ -54,6 +54,7 @@ var MultiVisionPlayer = /** @class */ (function () {
         this.isCameraChanging = false;
         this.isBufferCompleted = false;
         this.isManualSetTime = false;
+        this.onError = onError;
         this.fetchMetadata(customDataName, customMetadata, onMetadataLoaded).then(function () {
             if (!_this.playerElement)
                 _this.playerElement = document.getElementById(setting_1.default.playerHTMLElementID);
@@ -122,14 +123,14 @@ var MultiVisionPlayer = /** @class */ (function () {
                             setting_1.default.applyMetadata(undefined, customMetadata);
                         // Auto streamHost when in stream mode
                         if (setting_1.default.streamHost === '') {
-                            setting_1.default.streamHost = "http://".concat(location.hostname, ":8081");
+                            setting_1.default.streamHost = "http://" + location.hostname + ":8081";
                         }
                         if (!!dataName) return [3 /*break*/, 1];
                         errorMessage = 'Please input data name!';
                         return [3 /*break*/, 7];
                     case 1:
                         metadata = void 0;
-                        return [4 /*yield*/, fetch("".concat(setting_1.default.streamHost, "/").concat(dataName, "/metadata.json"))];
+                        return [4 /*yield*/, fetch(setting_1.default.streamHost + "/" + dataName + "/metadata.json")];
                     case 2:
                         resp = _b.sent();
                         _b.label = 3;
@@ -141,7 +142,7 @@ var MultiVisionPlayer = /** @class */ (function () {
                         return [3 /*break*/, 6];
                     case 5:
                         _a = _b.sent();
-                        throw new Error("No data name \"".concat(dataName, "\" found!"));
+                        throw new Error("No data name \"" + dataName + "\" found!");
                     case 6:
                         setting_1.default.applyMetadata(dataName, metadata);
                         if (onMetadataLoaded)
@@ -176,6 +177,8 @@ var MultiVisionPlayer = /** @class */ (function () {
             this.messageElement.innerHTML = message;
             this.messageElement.style.display = 'block';
         }
+        if (this.onError)
+            this.onError(message);
     };
     MultiVisionPlayer.prototype.getCurrentTime = function () {
         return this.playerElement.currentTime;
@@ -225,7 +228,7 @@ var MultiVisionPlayer = /** @class */ (function () {
                     this.mediaSource.endOfStream();
                 }
                 catch (e) {
-                    console.warn("EndStreamError: ".concat(e));
+                    console.warn("EndStreamError: " + e);
                 }
             }
             return;

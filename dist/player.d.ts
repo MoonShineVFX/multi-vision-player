@@ -12,7 +12,8 @@ declare class MultiVisionPlayer {
     private isCameraChanging;
     private isBufferCompleted;
     private isManualSetTime;
-    constructor(playerElement?: HTMLVideoElement, customDataName?: string, customMetadata?: Object, disableDefaultControl?: boolean, onMetadataLoaded?: (metadata: GlobalSetting) => void);
+    private onError?;
+    constructor(playerElement?: HTMLVideoElement, customDataName?: string, customMetadata?: Object, disableDefaultControl?: boolean, onMetadataLoaded?: (metadata: GlobalSetting) => void, onError?: (errorMessage: string) => void);
     private fetchMetadata;
     private initializeMediaSource;
     private showError;

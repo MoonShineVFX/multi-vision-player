@@ -20,12 +20,15 @@ class MultiVisionPlayer {
   private isBufferCompleted: boolean;
   private isManualSetTime: boolean;
 
+  private onError?: (errorMessage: string) => void;
+
   constructor(
     playerElement?: HTMLVideoElement,
     customDataName?: string,
     customMetadata?: Object,
     disableDefaultControl?: boolean,
-    onMetadataLoaded?: (metadata: GlobalSetting) => void
+    onMetadataLoaded?: (metadata: GlobalSetting) => void,
+    onError?: (errorMessage: string) => void
   ) {
     console.info('Initialize MultiVisionPlayer')
     this.playerElement = playerElement || null;
@@ -39,6 +42,7 @@ class MultiVisionPlayer {
     this.isCameraChanging = false;
     this.isBufferCompleted = false;
     this.isManualSetTime = false;
+    this.onError = onError;
 
     this.fetchMetadata(
       customDataName, customMetadata, onMetadataLoaded
@@ -165,6 +169,7 @@ class MultiVisionPlayer {
       this.messageElement.innerHTML = message;
       this.messageElement.style.display = 'block';
     }
+    if (this.onError) this.onError(message);
   }
 
   getCurrentTime(): number {

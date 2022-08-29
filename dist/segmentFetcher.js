@@ -55,7 +55,7 @@ var SegmentFetcher = /** @class */ (function () {
                 switch (_a.label) {
                     case 0:
                         this.isFetching = true;
-                        requestURL = "".concat(setting_1.default.streamHost, "/").concat(setting_1.default.streamURI, "/").concat(this.currentIndex);
+                        requestURL = setting_1.default.streamHost + "/" + setting_1.default.streamURI + "/" + this.currentIndex;
                         return [4 /*yield*/, fetch(requestURL)];
                     case 1:
                         response = _a.sent();
