@@ -162,14 +162,15 @@ class MultiVisionPlayer {
     });
   }
 
-  private showError(message: string) {
-    console.warn(message);
+  private showError(message: string | Error) {
+    const messageString: string = message instanceof Error ? message.message : message;
+    console.warn(messageString);
     if (this.playerElement) this.playerElement.style.display = 'none';
     if (this.messageElement) {
-      this.messageElement.innerHTML = message;
+      this.messageElement.innerHTML = messageString;
       this.messageElement.style.display = 'block';
     }
-    if (this.onError) this.onError(message);
+    if (this.onError) this.onError(messageString);
   }
 
   getCurrentTime(): number {

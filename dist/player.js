@@ -170,15 +170,16 @@ var MultiVisionPlayer = /** @class */ (function () {
         });
     };
     MultiVisionPlayer.prototype.showError = function (message) {
-        console.warn(message);
+        var messageString = message instanceof Error ? message.message : message;
+        console.warn(messageString);
         if (this.playerElement)
             this.playerElement.style.display = 'none';
         if (this.messageElement) {
-            this.messageElement.innerHTML = message;
+            this.messageElement.innerHTML = messageString;
             this.messageElement.style.display = 'block';
         }
         if (this.onError)
-            this.onError(message);
+            this.onError(messageString);
     };
     MultiVisionPlayer.prototype.getCurrentTime = function () {
         return this.playerElement.currentTime;
