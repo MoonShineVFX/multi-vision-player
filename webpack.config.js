@@ -4,7 +4,7 @@ const webpack = require("webpack");
 
 
 module.exports = {
-  entry: './src/test.ts',
+  entry: './src/host.ts',
   mode: 'development',
   devtool: 'inline-source-map',
   devServer: {

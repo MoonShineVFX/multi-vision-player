@@ -48,6 +48,13 @@ class MultiVisionPlayer {
       customDataName, customMetadata, onMetadataLoaded
     ).then(() => {
       if (!this.playerElement) this.playerElement = <HTMLMediaElement>document.getElementById(setting.playerHTMLElementID);
+
+      // Add error callback
+      ['abort', 'stalled', 'suspend', 'error'].forEach(eventType => {
+        this.playerElement!.addEventListener(eventType, event => this.handleVideoEvent(event))
+      });
+
+
       this.messageElement = <HTMLDivElement>document.getElementById(setting.messageElementID);
       this.fullScreenElement = <HTMLDivElement>document.getElementById(setting.fullScreenID);
       if (this.fullScreenElement) {
@@ -160,6 +167,26 @@ class MultiVisionPlayer {
       this.mediaSource.addEventListener('sourceopen', resolve);
       this.playerElement!.src = URL.createObjectURL(this.mediaSource);
     });
+  }
+
+  private handleVideoEvent(event: Event) {
+    const prefix = '[video event] '
+    switch (event.type) {
+      case 'abort':
+        this.showError(prefix + 'abort');
+        break;
+      case 'stalled':
+        this.showError(prefix + 'stalled');
+        break;
+      case 'suspend':
+        this.showError(prefix + 'suspend');
+        break;
+      case 'error':
+        this.showError(prefix + (event as ErrorEvent).message);
+        break;
+      default:
+        break
+    }
   }
 
   private showError(message: string | Error) {

@@ -16,6 +16,7 @@ declare class MultiVisionPlayer {
     constructor(playerElement?: HTMLVideoElement, customDataName?: string, customMetadata?: Object, disableDefaultControl?: boolean, onMetadataLoaded?: (metadata: GlobalSetting) => void, onError?: (errorMessage: string) => void);
     private fetchMetadata;
     private initializeMediaSource;
+    private handleVideoEvent;
     private showError;
     getCurrentTime(): number;
     setCurrentTime(time: number): void;

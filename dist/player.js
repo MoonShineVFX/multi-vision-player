@@ -58,6 +58,10 @@ var MultiVisionPlayer = /** @class */ (function () {
         this.fetchMetadata(customDataName, customMetadata, onMetadataLoaded).then(function () {
             if (!_this.playerElement)
                 _this.playerElement = document.getElementById(setting_1.default.playerHTMLElementID);
+            // Add error callback
+            ['abort', 'stalled', 'suspend', 'error'].forEach(function (eventType) {
+                _this.playerElement.addEventListener(eventType, function (event) { return _this.handleVideoEvent(event); });
+            });
             _this.messageElement = document.getElementById(setting_1.default.messageElementID);
             _this.fullScreenElement = document.getElementById(setting_1.default.fullScreenID);
             if (_this.fullScreenElement) {
@@ -168,6 +172,25 @@ var MultiVisionPlayer = /** @class */ (function () {
             _this.mediaSource.addEventListener('sourceopen', resolve);
             _this.playerElement.src = URL.createObjectURL(_this.mediaSource);
         });
+    };
+    MultiVisionPlayer.prototype.handleVideoEvent = function (event) {
+        var prefix = '[video event] ';
+        switch (event.type) {
+            case 'abort':
+                this.showError(prefix + 'abort');
+                break;
+            case 'stalled':
+                this.showError(prefix + 'stalled');
+                break;
+            case 'suspend':
+                this.showError(prefix + 'suspend');
+                break;
+            case 'error':
+                this.showError(prefix + event.message);
+                break;
+            default:
+                break;
+        }
     };
     MultiVisionPlayer.prototype.showError = function (message) {
         var messageString = message instanceof Error ? message.message : message;
