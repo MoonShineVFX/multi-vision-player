@@ -39,6 +39,8 @@ class Controller {
         for (let i = 0; i < setting.cameraCount; i++) {
             const spanElement = document.createElement('span');
             spanElement.className = i === 0 ? setting.cameraDotStyleSelect : setting.cameraDotStyleDefault;
+            const triggerHandler = () => this.player.requestChangeCameraByIndex(i + 1);
+            spanElement.addEventListener('pointerdown', triggerHandler);
             this.HTMLElement.appendChild(spanElement);
             this.cameraElements.push(spanElement);
         }

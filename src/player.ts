@@ -54,7 +54,6 @@ class MultiVisionPlayer {
         this.playerElement!.addEventListener(eventType, event => this.handleVideoEvent(event))
       });
 
-
       this.messageElement = <HTMLDivElement>document.getElementById(setting.messageElementID);
       this.fullScreenElement = <HTMLDivElement>document.getElementById(setting.fullScreenID);
       if (this.fullScreenElement) {
